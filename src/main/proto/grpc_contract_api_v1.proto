@@ -9,13 +9,15 @@ package contractservice.api;
 option java_package = "nl.jdriven.blogs.svc.contract.proto";
 // import some well-known types from google
 import "google/type/money.proto";
+import "google/rpc/status.proto";
+import "google/rpc/code.proto";
 
 service ContractService {
     rpc NewQuote (NewQuoteRequest) returns (NewQuoteResponse);
-    rpc promoteQuote (ContractId) returns (PromoteQuoteResponse);
+    rpc promoteQuote (PromoteQuoteRequest) returns (PromoteQuoteResponse);
     rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
-    rpc finalizeContract (ContractId) returns (FinalizeContractResponse);
-    rpc find (ContractId) returns (ContractResponse);
+    rpc finalizeContract (FinalizeContractRequest) returns (FinalizeContractResponse);
+    rpc findContract (FindContractRequest) returns (FindContractResponse);
 }
 
 message NewQuoteRequest {
@@ -25,47 +27,47 @@ message NewQuoteRequest {
 }
 
 message NewQuoteResponse {
-    Result status = 1;
-    string reason = 2;
-    ContractId quoteId = 3;
+    string contractId = 1;
+}
+
+message PromoteQuoteRequest {
+    string contractId = 1;
 }
 
 message PromoteQuoteResponse {
-    Result status = 1;
-    string reason = 2;
+    // empty for now
 }
 
 message AddWorkDoneRequest {
-    ContractId contractId = 1;
+    string contractId = 1;
     WorkDone work = 2;
 }
 
 message AddWorkDoneResponse {
-    Result status = 1;
-    string reason = 2;
+    // empty for now
+}
+
+message FinalizeContractRequest {
+    string contractId = 1;
 }
 
 message FinalizeContractResponse {
-    Result status = 1;
-    string reason = 2;
-    google.type.Money profitMade = 3;
+    google.type.Money profitMade = 1;
 }
 
-message ContractResponse {
-    Result status = 1;
-    string reason = 2;
-    Contract contract = 3;
+message FindContractRequest {
+    string contractId = 1;
+}
+
+message FindContractResponse {
+    Contract contract = 1;
 }
 
 /*** All Model definitions follows below ****/
 message Contract {
-    ContractId contractId = 1;
+    string contractId = 1;
     Quote quote = 2;
     repeated WorkDone work = 3;
-}
-
-message ContractId {
-    string id = 1;
 }
 
 message Quote {
@@ -79,9 +81,3 @@ message WorkDone {
     string descriptionOfWorkDone = 2;
 }
 
-enum Result {
-    UNKNOWN = 0;
-    OK = 1;
-    FAILED = 2;
-    NOTFOUND = 3;
-}

@@ -3,7 +3,7 @@ plugins {
     id "java"
 }
 
-def nettyTcNativeVersion = '2.0.7.Final'
+//def nettyTcNativeVersion = '2.0.7.Final'
 def grpcVersion = '1.28.1'
 def protobufVersion = '3.9.2'
 def protocVersion = '3.9.2'
@@ -16,46 +16,29 @@ repositories {
 group 'nl.blogs.svc.contract'
 version '1.0-SNAPSHOT'
 
-sourceCompatibility = 14
+sourceCompatibility = 11
 
 dependencies {
     compileOnly "javax.annotation:javax.annotation-api:1.2"
-    compile "com.google.api.grpc:proto-google-common-protos:1.0.0"
+    implementation "com.google.api.grpc:proto-google-common-protos:1.0.0"
 
-    compile "io.grpc:grpc-protobuf:${grpcVersion}"
-    compile "io.grpc:grpc-stub:${grpcVersion}"
-    compile "com.google.protobuf:protobuf-java-util:${protobufVersion}"
+    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+    implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation "com.google.protobuf:protobuf-java-util:${protobufVersion}"
 
-    compile "io.grpc:grpc-netty-shaded:${grpcVersion}"
-    // compile "io.grpc:grpc-alts:${grpcVersion}"  // see https://cloud.google.com/security/encryption-in-transit/application-layer-transport-security/
-    // compile "io.netty:netty-tcnative-boringssl-static:${nettyTcNativeVersion}"
+    implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
 
-    compile "org.apache.commons:commons-lang3:3.5"
-
-//    testCompile "io.grpc:grpc-testing:${grpcVersion}"
-//    testCompile "junit:junit:4.12"
-//    testCompile "org.mockito:mockito-core:1.9.5"
+    implementation "org.apache.commons:commons-lang3:3.5"
 }
 
 
 protobuf {
-    // Protobuf will search for the protoc command on the systems path by default,
-    // but the next line pulls in a specific version of a precompiled protoc without
-    // required it in the system's search path
     protoc {
         artifact = "com.google.protobuf:protoc:${protocVersion}"
     }
-    
-    // Plugins for the protobuf compiler. This sections defines a plugin named 'grpc'
-    // which generates java code from the .proto files. 
     plugins {
         grpc { artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}" }
     }
-    
-    //The Protobuf plugin generates a task for each protoc run, which is for a sourceSet 
-    // in a Java project, or a variant in an Android project. The task has configuration 
-    // interfaces that allow you to control the type of outputs, the codegen plugins to use, 
-    // and parameters. This section configures all tasks to include the grpc plugin.
     generateProtoTasks {
         all()*.plugins { grpc {} }
     }

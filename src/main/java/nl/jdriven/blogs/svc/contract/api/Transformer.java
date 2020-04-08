@@ -1,18 +1,18 @@
 package nl.jdriven.blogs.svc.contract.api;
 
 import com.google.type.Money;
-import nl.jdriven.blogs.svc.contract.model.api.DetailedResult;
 import nl.jdriven.blogs.svc.contract.model.main.Contract;
 import nl.jdriven.blogs.svc.contract.model.main.WorkDone;
-import nl.jdriven.blogs.svc.contract.proto.ContractId;
 import nl.jdriven.blogs.svc.contract.proto.Quote;
-import nl.jdriven.blogs.svc.contract.proto.Result;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Transformer between gRPC classes and Model classes.
+ */
 public class Transformer {
     private Transformer() {
     }
@@ -60,13 +60,9 @@ public class Transformer {
         var allWork =c.getWorkDone().stream().map(Transformer::transform).collect(Collectors.toUnmodifiableList());
 
         return nl.jdriven.blogs.svc.contract.proto.Contract.newBuilder()
-                .setContractId(ContractId.newBuilder().setId(c.getId()))
+                .setContractId(c.getId())
                 .setQuote(quote)
                 .addAllWork(allWork)
                 .build();
-    }
-
-    public static Result transform(DetailedResult.Result result) {
-        return Result.forNumber(result.getNumber());
     }
 }

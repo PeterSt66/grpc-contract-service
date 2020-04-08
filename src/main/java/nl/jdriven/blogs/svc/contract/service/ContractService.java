@@ -1,7 +1,7 @@
 package nl.jdriven.blogs.svc.contract.service;
 
-import nl.jdriven.blogs.svc.contract.model.api.DetailedResult;
-import nl.jdriven.blogs.svc.contract.model.api.Response;
+import nl.jdriven.blogs.svc.contract.model.exception.NotFoundException;
+import nl.jdriven.blogs.svc.contract.model.exception.PreConditionNotMetException;
 import nl.jdriven.blogs.svc.contract.model.main.Contract;
 import nl.jdriven.blogs.svc.contract.model.main.WorkDone;
 
@@ -10,9 +10,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * this service implements the business logic of the Contract service.
+ */
 public class ContractService {
     private static final Map<String, Contract> contracts = new HashMap<>();
 
+    /**
+     * Start a new contact as a quote with a quoted fixed price and some info.
+     * @return contract id.
+     */
     public String addQuote(String fullNameOfParticipant, BigDecimal quotedPrice, String descriptionOfWorkRequested) {
         var contract = new Contract(
                 UUID.randomUUID().toString(),
@@ -24,40 +31,51 @@ public class ContractService {
         return contract.getId();
     }
 
-    public DetailedResult addWorkDone(String id, WorkDone workDone) {
+    /**
+     * Add some work that was done to the contract; the contract needs to be in status ATWORK.
+     * @throws PreConditionNotMetException
+     * @throws  NotFoundException
+     */
+    public void addWorkDone(String id, WorkDone workDone) {
         var c = contracts.get(id);
         if (c == null) {
-            return DetailedResult.NOTFOUND;
+            throw new NotFoundException();
         }
         if (c.getStatus() != Contract.Status.ATWORK) {
-            return DetailedResult.of(DetailedResult.Result.FAILED, "Not.at.work");
+            throw new PreConditionNotMetException("Not.at.work");
         }
         c.addWorkDone(workDone);
-        return DetailedResult.OK;
     }
 
-    public DetailedResult promoteQuote(String id) {
+    /**
+     * Promote the contract to ATWORK, can only be done on a contract that is a quote
+     * and is done when the quote has been accepted.
+     * @throws PreConditionNotMetException
+     * @throws  NotFoundException
+     */
+    public void promoteQuote(String id) {
         var c = contracts.get(id);
         if (c == null) {
-            return DetailedResult.NOTFOUND;
+            throw new NotFoundException();
         }
         if (c.getStatus() != Contract.Status.QUOTE) {
-            return DetailedResult.of(DetailedResult.Result.FAILED, "Not.a.quote");
+            throw new PreConditionNotMetException("Not.a.quote");
         }
         c.setStatus(Contract.Status.ATWORK);
-        return DetailedResult.OK;
     }
 
-    public Response<BigDecimal> finalizeContract(String id) {
-        DetailedResult result = null;
+    /**
+     * Finalize the contract and calculate the profit made, can only be done on a contract that is ATWORK.
+     * @return calculated profit
+     * @throws PreConditionNotMetException
+     */
+    public BigDecimal finalizeContract(String id) {
         var c = contracts.get(id);
         if (c == null) {
-            result = DetailedResult.NOTFOUND;
-        } else if (c.getStatus() != Contract.Status.ATWORK) {
-            result = DetailedResult.of(DetailedResult.Result.FAILED, "Not.at.work");
+            throw new NotFoundException();
         }
-        if (result != null) {
-            return Response.of(result);
+        if (c.getStatus() != Contract.Status.ATWORK) {
+            throw new PreConditionNotMetException("Not.at.work");
         }
 
         c.setStatus(Contract.Status.FINALIZED);
@@ -67,16 +85,20 @@ public class ContractService {
                 .reduce(BigDecimal::add)
                 .orElse(BigDecimal.ZERO); // add() always delivers, so the default is for the compilerchecks
 
-        var profit = c.getQuotedPrice().subtract(workCosts);
-        return Response.of(DetailedResult.OK, profit);
+        return c.getQuotedPrice().subtract(workCosts);
     }
 
-    public Response<Contract> find(String id) {
+    /**
+     * Search for the contract with given contract id.
+     * @return contract found, otherwise:
+     * @throws NotFoundException
+     */
+    public Contract find(String id) {
         var c = contracts.get(id);
         if (c == null) {
-            return Response.of(DetailedResult.NOTFOUND);
+            throw new NotFoundException();
         }
-        return Response.of(DetailedResult.OK, c);
+        return c;
     }
 
 }
