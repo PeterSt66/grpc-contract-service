@@ -20,8 +20,8 @@ public class ContractServiceApiHandler extends ContractServiceGrpc.ContractServi
         String reason = "";
         if (StringUtils.isBlank(request.getDescriptionOfWorkRequested())) {
             reason = "Input.DescriptionOfWorkRequested.mandatory";
-        } else if (StringUtils.isBlank(request.getFullNameOfParticipant())) {
-            reason = StringUtils.joinWith(";", reason, "Input.FullNameOfParticipant.mandatory");
+        } else if (StringUtils.isBlank(request.getFullNameOfCustomer())) {
+            reason = StringUtils.joinWith(";", reason, "Input.FullNameOfCustomer.mandatory");
         } else if (!request.hasQuotedPrice() || Transformer.transform(request.getQuotedPrice()).isEmpty()) {
             reason = StringUtils.joinWith(";", reason, "Input.QuotedPrice.mandatory");
         }
@@ -29,7 +29,7 @@ public class ContractServiceApiHandler extends ContractServiceGrpc.ContractServi
             throw new PreConditionNotMetException(reason);
         }
 
-        String id = contractService.addQuote(request.getFullNameOfParticipant(),
+        String id = contractService.addQuote(request.getFullNameOfCustomer(),
                 Transformer.transform(request.getQuotedPrice()).get(),
                 request.getDescriptionOfWorkRequested());
 

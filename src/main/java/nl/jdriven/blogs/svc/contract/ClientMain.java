@@ -72,7 +72,7 @@ public class ClientMain {
         var price = new BigDecimal(2500L, new MathContext(2));
         var quotedPrice = Transformer.transform(price);
         NewQuoteRequest request = NewQuoteRequest.newBuilder()
-                .setFullNameOfParticipant("Man on the moon")
+                .setFullNameOfCustomer("Man on the moon")
                 .setDescriptionOfWorkRequested("Please give me a quote for installing a kitchen, everything is already delivered @ the house, including all appliances.")
                 .setQuotedPrice(quotedPrice)
                 .build();

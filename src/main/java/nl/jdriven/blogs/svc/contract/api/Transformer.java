@@ -53,7 +53,7 @@ public class Transformer {
     public static nl.jdriven.blogs.svc.contract.proto.Contract transform(Contract c) {
         var quote = Quote.newBuilder()
                 .setDescriptionOfWorkRequested(c.getDescriptionOfWorkRequested())
-                .setFullNameOfParticipant(c.getFullNameOfParticipant())
+                .setFullNameOfCustomer(c.getFullNameOfCustomer())
                 .setQuotedPrice(Transformer.transform(c.getQuotedPrice()))
                 .build();
 

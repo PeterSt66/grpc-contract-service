@@ -20,12 +20,12 @@ public class ContractService {
      * Start a new contact as a quote with a quoted fixed price and some info.
      * @return contract id.
      */
-    public String addQuote(String fullNameOfParticipant, BigDecimal quotedPrice, String descriptionOfWorkRequested) {
+    public String addQuote(String fullNameOfCustomer, BigDecimal quotedPrice, String descriptionOfWorkRequested) {
         var contract = new Contract(
                 UUID.randomUUID().toString(),
                 quotedPrice,
                 descriptionOfWorkRequested,
-                fullNameOfParticipant);
+                fullNameOfCustomer);
         contracts.put(contract.getId(), contract);
         System.out.println("Added contract as a quote: " + contract);
         return contract.getId();

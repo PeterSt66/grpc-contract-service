@@ -15,14 +15,14 @@ public class Contract {
     private final String id;
     private final BigDecimal quotedPrice;
     private final String descriptionOfWorkRequested;
-    private final String fullNameOfParticipant;
+    private final String fullNameOfCustomer;
     private final List<WorkDone> workDone = new ArrayList<>();
 
-    public Contract(String id, BigDecimal quotedPrice, String descriptionOfWorkRequested, String fullNameOfParticipant) {
+    public Contract(String id, BigDecimal quotedPrice, String descriptionOfWorkRequested, String fullNameOfCustomer) {
         this.id = id;
         this.quotedPrice = quotedPrice;
         this.descriptionOfWorkRequested = descriptionOfWorkRequested;
-        this.fullNameOfParticipant = fullNameOfParticipant;
+        this.fullNameOfCustomer = fullNameOfCustomer;
     }
 
     public String getId() {
@@ -45,8 +45,8 @@ public class Contract {
         return descriptionOfWorkRequested;
     }
 
-    public String getFullNameOfParticipant() {
-        return fullNameOfParticipant;
+    public String getFullNameOfCustomer() {
+        return fullNameOfCustomer;
     }
 
     public List<WorkDone> getWorkDone() {

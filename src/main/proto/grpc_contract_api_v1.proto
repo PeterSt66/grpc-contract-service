@@ -13,7 +13,7 @@ import "google/rpc/status.proto";
 import "google/rpc/code.proto";
 
 service ContractService {
-    rpc NewQuote (NewQuoteRequest) returns (NewQuoteResponse);
+    rpc NewQuote (NewQuoteRequest) returns (string);
     rpc promoteQuote (PromoteQuoteRequest) returns (PromoteQuoteResponse);
     rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
     rpc finalizeContract (FinalizeContractRequest) returns (FinalizeContractResponse);
@@ -21,7 +21,7 @@ service ContractService {
 }
 
 message NewQuoteRequest {
-    string fullNameOfParticipant = 1;
+    string fullNameOfCustomer = 1;
     google.type.Money quotedPrice = 2;
     string descriptionOfWorkRequested = 3;
 }
@@ -71,7 +71,7 @@ message Contract {
 }
 
 message Quote {
-    string fullNameOfParticipant = 1;
+    string fullNameOfCustomer = 1;
     google.type.Money quotedPrice = 2;
     string descriptionOfWorkRequested = 3;
 }
