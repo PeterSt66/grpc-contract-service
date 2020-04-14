@@ -13,7 +13,7 @@ import java.math.BigDecimal;
  * It's debatable whether constraint checking should be done here but hey, it's an example for ProtoBuf.
  * @see ContractService
  */
-public class ContractServiceApiHandler extends ContractServiceGrpc.ContractServiceImplBase {
+public class ContractServiceApiHandler {
     private static final ContractService contractService = new ContractService();
 
     public NewQuoteResponse newQuote(NewQuoteRequest request) {
