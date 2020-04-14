@@ -1,6 +1,7 @@
 # Contract Service gRPC implementation
 
-Sample code for blog posts.
+Sample code for 'Practical Protobuf', 
+see [Practical Protobuf - Introduction](https://blog.jdriven.com/2020/04/Practical-Protobuf-01-Introduction).
 
 Inspired by: [grpc-as-an-alternative-to-rest](https://blog.jdriven.com/2018/10/grpc-as-an-alternative-to-rest/)
 
