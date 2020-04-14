@@ -57,7 +57,9 @@ public class Transformer {
                 .setQuotedPrice(Transformer.transform(c.getQuotedPrice()))
                 .build();
 
-        var allWork =c.getWorkDone().stream().map(Transformer::transform).collect(Collectors.toUnmodifiableList());
+        var allWork =c.getWorkDone().stream()
+                .map(Transformer::transform)
+                .collect(Collectors.toUnmodifiableList());
 
         return nl.jdriven.blogs.svc.contract.proto.Contract.newBuilder()
                 .setContractId(c.getId())
