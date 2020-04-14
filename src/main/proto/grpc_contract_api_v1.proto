@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+// Class that will contain descriptor
+option java_outer_classname = "ContractServiceProto";
+// the Protobuf package
+package contractservice.api;
+// The package where the generated classes will reside
+option java_package = "nl.jdriven.blogs.svc.contract.proto";
+// import some well-known types from google
+import "google/type/money.proto";
+import "google/rpc/status.proto";
+import "google/rpc/code.proto";
+
+service ContractService {
+    rpc NewQuote (NewQuoteRequest) returns (NewQuoteResponse);
+    rpc promoteQuote (PromoteQuoteRequest) returns (PromoteQuoteResponse);
+    rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
+    rpc finalizeContract (FinalizeContractRequest) returns (FinalizeContractResponse);
+    rpc findContract (FindContractRequest) returns (FindContractResponse);
+}
+
+message NewQuoteRequest {
+    string fullNameOfCustomer = 1;
+    google.type.Money quotedPrice = 2;
+    string descriptionOfWorkRequested = 3;
+}
+
+message NewQuoteResponse {
+    string contractId = 1;
+}
+
+message PromoteQuoteRequest {
+    string contractId = 1;
+}
+
+message PromoteQuoteResponse {
+    // empty for now
+}
+
+message AddWorkDoneRequest {
+    string contractId = 1;
+    WorkDone work = 2;
+}
+
+message AddWorkDoneResponse {
+    // empty for now
+}
+
+message FinalizeContractRequest {
+    string contractId = 1;
+}
+
+message FinalizeContractResponse {
+    google.type.Money profitMade = 1;
+}
+
+message FindContractRequest {
+    string contractId = 1;
+}
+
+message FindContractResponse {
+    Contract contract = 1;
+}
+
+/*** All Model definitions follows below ****/
+message Contract {
+    string contractId = 1;
+    Quote quote = 2;
+    repeated WorkDone work = 3;
+}
+
+message Quote {
+    string fullNameOfCustomer = 1;
+    google.type.Money quotedPrice = 2;
+    string descriptionOfWorkRequested = 3;
+}
+
+message WorkDone {
+    google.type.Money costOfWork = 1;
+    string descriptionOfWorkDone = 2;
+}
+
