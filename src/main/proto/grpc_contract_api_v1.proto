@@ -13,7 +13,7 @@ import "google/rpc/status.proto";
 import "google/rpc/code.proto";
 
 service ContractService {
-    rpc NewQuote (NewQuoteRequest) returns (NewQuoteResponse);
+    rpc newQuote (NewQuoteRequest) returns (NewQuoteResponse);
     rpc promoteQuote (PromoteQuoteRequest) returns (PromoteQuoteResponse);
     rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
     rpc finalizeContract (FinalizeContractRequest) returns (FinalizeContractResponse);
