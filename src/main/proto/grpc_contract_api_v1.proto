@@ -11,7 +11,7 @@ option java_package = "nl.jdriven.blogs.svc.contract.proto";
 import "google/type/money.proto";
 
 service ContractService {
-    rpc NewQuote (NewQuoteRequest) returns (NewQuoteResponse);
+    rpc newQuote (NewQuoteRequest) returns (NewQuoteResponse);
     rpc promoteQuote (ContractId) returns (PromoteQuoteResponse);
     rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
     rpc finalizeContract (ContractId) returns (FinalizeContractResponse);
