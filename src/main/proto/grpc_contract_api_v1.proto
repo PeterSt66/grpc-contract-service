@@ -4,20 +4,21 @@ option java_multiple_files = true;
 // Class that will contain descriptor
 option java_outer_classname = "ContractServiceProto";
 // the Protobuf package
-package contractservice.api;
+package contracts.api;
 // The package where the generated classes will reside
 option java_package = "nl.jdriven.blogs.svc.contract.proto";
 // import some well-known types from google
 import "google/type/money.proto";
 import "google/rpc/status.proto";
-import "google/rpc/code.proto";
 
 service ContractService {
-    rpc newQuote (NewQuoteRequest) returns (NewQuoteResponse);
-    rpc promoteQuote (PromoteQuoteRequest) returns (PromoteQuoteResponse);
-    rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
-    rpc finalizeContract (FinalizeContractRequest) returns (FinalizeContractResponse);
-    rpc findContract (FindContractRequest) returns (FindContractResponse);
+    rpc newQuote(NewQuoteRequest)                  returns (NewQuoteResponse);
+    rpc promoteQuote(PromoteQuoteRequest)          returns (PromoteQuoteResponse);
+    rpc addWorkDone(AddWorkDoneRequest)            returns (AddWorkDoneResponse);
+    rpc finalizeContract(FinalizeContractRequest)  returns (FinalizeContractResponse);
+    rpc findContract(FindContractRequest)          returns (FindContractResponse);
+    // server admin
+    rpc serverCommand(ServerCommandRequest)        returns (ServerCommandResponse);
 }
 
 message NewQuoteRequest {
@@ -81,3 +82,10 @@ message WorkDone {
     string descriptionOfWorkDone = 2;
 }
 
+message ServerCommandRequest {
+    string cmd = 1;
+}
+
+message ServerCommandResponse {
+    string resultDescription = 1;
+}

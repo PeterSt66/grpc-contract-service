@@ -3,14 +3,25 @@ package nl.jdriven.blogs.svc.contract;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import io.perfmark.PerfMark;
+import lombok.extern.slf4j.Slf4j;
 import nl.jdriven.blogs.svc.contract.api.Transformer;
 import nl.jdriven.blogs.svc.contract.proto.*;
+import org.joda.money.CurrencyUnit;
+import org.joda.money.Money;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
+import java.io.File;
+import java.io.FileWriter;
 
+@Slf4j
 public class ClientMain {
     public static void main(String[] args) {
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
+
+        PerfMark.setEnabled(true);
+
         var channel = ManagedChannelBuilder
                 .forAddress("localhost", 53000)
                 .usePlaintext() // disable TLS which is enabled by default and requires certificates
@@ -41,6 +52,10 @@ public class ClientMain {
 
         findContract(client, cid);
 
+        dumpTrace(client);
+
+        stopServer(client);
+
         // avoid nastiness on the serverside due to the sudden death of the connection
         ((ManagedChannel) client.getChannel()).shutdownNow();
     }
@@ -48,13 +63,13 @@ public class ClientMain {
     private static void findContract(ContractServiceGrpc.ContractServiceBlockingStub client, String cid) {
         var fcr = FindContractRequest.newBuilder().setContractId(cid).build();
         var found = client.findContract(fcr);
-        System.out.println("Find contract gave: " + found);
+        log.info("Find contract gave: \n{}", found);
     }
 
     private static void finalizeContract(ContractServiceGrpc.ContractServiceBlockingStub client, String cid) {
         var fcr = FinalizeContractRequest.newBuilder().setContractId(cid).build();
         var fcResp = client.finalizeContract(fcr);
-        System.out.println("Finalize contract gave: " + fcResp);
+        log.info("Finalize contract gave: \n{}", fcResp);
     }
 
     private static void promoteQuoteToContract(ContractServiceGrpc.ContractServiceBlockingStub client, String cid, String desc) {
@@ -62,29 +77,28 @@ public class ClientMain {
 
         try {
             var pqrespWrong = client.promoteQuote(quoteRequest);
-            System.out.println("Promote " + desc + " gave: " + pqrespWrong);
+            log.info("Promote {} gave: \n{}", desc, pqrespWrong);
         } catch (StatusRuntimeException sre) {
-            System.out.println("Promote failed with: " + sre.getStatus().getCode() + " because: " + sre.getStatus().getDescription());
+            log.info("Promote failed with: \n{}", sre.getStatus().getCode() + " because: \n{}", sre.getStatus().getDescription());
         }
     }
 
     private static NewQuoteResponse prepareQuote(ContractServiceGrpc.ContractServiceBlockingStub client) {
-        var price = new BigDecimal(2500L, new MathContext(2));
-        var quotedPrice = Transformer.transform(price);
+        var quotedPrice = Money.ofMajor(CurrencyUnit.EUR, 2500L);
         NewQuoteRequest request = NewQuoteRequest.newBuilder()
                 .setFullNameOfCustomer("Man on the moon")
                 .setDescriptionOfWorkRequested("Please give me a quote for installing a kitchen, everything is already delivered @ the house, including all appliances.")
-                .setQuotedPrice(quotedPrice)
+                .setQuotedPrice(Transformer.transform(quotedPrice))
                 .build();
         var aqresp = client.newQuote(request);
-        System.out.println("Prepare quote gave: " + aqresp);
+        log.info("Prepare quote gave: \n{}", aqresp);
         return aqresp;
     }
 
     private static void AddSomeWork(ContractServiceGrpc.ContractServiceBlockingStub client, String cid, String desc, long amountInEur) {
-        var cost = Transformer.transform(new BigDecimal(amountInEur, new MathContext(2)));
+        var cost = Money.ofMajor(CurrencyUnit.EUR, amountInEur);
         var workdone = WorkDone.newBuilder()
-                .setCostOfWork(cost)
+                .setCostOfWork(Transformer.transform(cost))
                 .setDescriptionOfWorkDone(desc);
         AddWorkDoneRequest adr = AddWorkDoneRequest.newBuilder()
                 .setContractId(cid)
@@ -93,16 +107,16 @@ public class ClientMain {
 
         try {
             var wdresp = client.addWorkDone(adr);
-            System.out.println("Add work gave: " + wdresp);
+            log.info("Add work gave: \n{}", wdresp);
         } catch (StatusRuntimeException sre) {
-            System.out.println("Add work failed with: " + sre.getStatus().getCode() + " because: " + sre.getStatus().getDescription());
+            log.info("Add work failed with: {} because of: {}", sre.getStatus().getCode(), sre.getStatus().getDescription());
         }
     }
 
     private static void tryEmptyWork(ContractServiceGrpc.ContractServiceBlockingStub client) {
-        var cost = Transformer.transform(new BigDecimal(0L, new MathContext(2)));
+        var cost = Money.ofMajor(CurrencyUnit.EUR, 0L);
         var workdone = WorkDone.newBuilder()
-                .setCostOfWork(cost)
+                .setCostOfWork(Transformer.transform(cost))
                 .setDescriptionOfWorkDone("");
         AddWorkDoneRequest adr = AddWorkDoneRequest.newBuilder()
                 .setContractId("")
@@ -110,9 +124,26 @@ public class ClientMain {
                 .build();
 
         try {
-            var wdresp = client.addWorkDone(adr);
+            client.addWorkDone(adr);
         } catch (StatusRuntimeException sre) {
-            System.out.println("Add work failed with: " + sre.getStatus().getCode() + " because: " + sre.getStatus().getDescription());
+            log.info("Add work failed with: {} because of: {}", sre.getStatus().getCode(), sre.getStatus().getDescription());
         }
+    }
+
+    private static void dumpTrace(ContractServiceGrpc.ContractServiceBlockingStub client) {
+        var scresp = client.serverCommand(ServerCommandRequest.newBuilder().setCmd("CYCLEPERFMARK").build());
+        try {
+            var tf = File.createTempFile("Perfmark", ".html");
+            var fw = new FileWriter(tf);
+            fw.write(scresp.getResultDescription());
+            fw.close();
+            log.info("PerfMark trace written to: " + tf.getAbsolutePath());
+        } catch (Exception e) {
+            log.warn("Could not write perfmark tracefile:" + e, e);
+        }
+    }
+
+    private static void stopServer(ContractServiceGrpc.ContractServiceBlockingStub client) {
+        client.serverCommand(ServerCommandRequest.newBuilder().setCmd("STOP").build());
     }
 }

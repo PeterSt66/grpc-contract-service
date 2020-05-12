@@ -2,15 +2,22 @@ package nl.jdriven.blogs.svc.contract.api;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import io.perfmark.traceviewer.TraceEventViewer;
+import lombok.extern.slf4j.Slf4j;
 import nl.jdriven.blogs.svc.contract.model.exception.NotFoundException;
 import nl.jdriven.blogs.svc.contract.model.exception.PreConditionNotMetException;
 import nl.jdriven.blogs.svc.contract.proto.*;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 
 /**
  * This class Implements the gRPC API calls by handling the communication and
  * relaying the call to the ContractServiceApiHandler.
  * @see ContractServiceApiHandler
  */
+@Slf4j
 public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplBase {
 
     private static final ContractServiceApiHandler handler = new ContractServiceApiHandler();
@@ -61,6 +68,29 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
         }
     }
 
+    @Override
+    public void serverCommand(ServerCommandRequest request, StreamObserver<ServerCommandResponse> responseObserver) {
+        switch(request.getCmd()) {
+            case "STOP" : {
+                log.warn("Server stop command received");
+                System.exit(0);
+            }
+            case "CYCLEPERFMARK" : {
+                log.warn("Cycle PerfMark command received");
+                try {
+                    Writer writer = new StringWriter();
+                    TraceEventViewer.writeTraceHtml(writer);
+                    returnResponse(responseObserver, ServerCommandResponse.newBuilder().setResultDescription(writer.toString()).build());
+                } catch (IOException e) {
+                    log.warn("Could not write trace html: "+e,e);
+                }
+                log.warn("Cycle PerfMark - done");
+                break;
+            }
+            default: throw new IllegalArgumentException("Cmd not recognized");
+        }
+    }
+
     private <T> void returnResponse(StreamObserver<T> responseObserver, T response) {
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -74,11 +104,13 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
                     .withDescription(e.getConditionFailuresAsString());
             responseObserver.onError(status.asRuntimeException());
         }
-        if (exc instanceof NotFoundException) {
+        else if (exc instanceof NotFoundException) {
             responseObserver.onError(Status.NOT_FOUND.asRuntimeException());
         }
-        var status = Status.fromThrowable(exc);
-        responseObserver.onError(status.asRuntimeException());
+        else {
+            var status = Status.fromThrowable(exc);
+            responseObserver.onError(status.asRuntimeException());
+        }
     }
 
 }

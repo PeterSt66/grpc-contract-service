@@ -4,10 +4,9 @@ import com.google.type.Money;
 import nl.jdriven.blogs.svc.contract.model.main.Contract;
 import nl.jdriven.blogs.svc.contract.model.main.WorkDone;
 import nl.jdriven.blogs.svc.contract.proto.Quote;
+import org.apache.commons.lang3.StringUtils;
+import org.joda.money.CurrencyUnit;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -17,29 +16,24 @@ public class Transformer {
     private Transformer() {
     }
 
-    // unverified cut-and-grab job, might work but who knows.
-    public static Optional<BigDecimal> transform(final Money amount) {
-        // only accept EUR or no code (default is EUR)
-        var  currencyCode = amount.getCurrencyCode();
-        if (currencyCode != null && currencyCode.length() > 0 && !"EUR".equalsIgnoreCase(currencyCode)) {
-            return Optional.empty();
+    public static org.joda.money.Money transform(final Money amount) {
+        var  currencyCode = CurrencyUnit.EUR;
+        if (!StringUtils.isBlank(amount.getCurrencyCode())) {
+            currencyCode = CurrencyUnit.of(amount.getCurrencyCode());
         }
-        var  bd = new BigDecimal(amount.getUnits()).add(new BigDecimal(amount.getNanos(), new MathContext(9)));
-        return Optional.of(bd);
+        return org.joda.money.Money.ofMajor(currencyCode, amount.getUnits()).plusMinor(amount.getNanos());
     }
 
-    // quick hack, does not support cents (why will the Internet not help me?)
-    public static Money transform(BigDecimal amount) {
+    public static Money transform(org.joda.money.Money amount) {
         return Money.newBuilder()
-                .setCurrencyCode("EUR")
-                .setUnits(amount.longValue())
+                .setCurrencyCode(amount.getCurrencyUnit().getCode())
+                .setUnits(amount.getAmountMajorLong())
+                .setNanos(amount.getMinorPart())
                 .build();
-
     }
 
     public static WorkDone transform(nl.jdriven.blogs.svc.contract.proto.WorkDone work) {
-        var  costOfWork = transform(work.getCostOfWork()).orElse(null);
-        return new WorkDone(costOfWork, work.getDescriptionOfWorkDone());
+        return new WorkDone(transform(work.getCostOfWork()), work.getDescriptionOfWorkDone());
     }
 
     public static nl.jdriven.blogs.svc.contract.proto.WorkDone transform(WorkDone work ) {

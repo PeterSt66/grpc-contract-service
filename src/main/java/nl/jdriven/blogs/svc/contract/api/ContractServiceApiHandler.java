@@ -5,12 +5,11 @@ import nl.jdriven.blogs.svc.contract.proto.*;
 import nl.jdriven.blogs.svc.contract.service.ContractService;
 import org.apache.commons.lang3.StringUtils;
 
-import java.math.BigDecimal;
-
 /**
  * Handles all gRPC functions by translating input and output from/to the model classes of the service
  * to make the service itself protocol-agnostic.
  * It's debatable whether constraint checking should be done here but hey, it's an example for ProtoBuf.
+ *
  * @see ContractService
  */
 public class ContractServiceApiHandler {
@@ -22,7 +21,7 @@ public class ContractServiceApiHandler {
             reason = "Input.DescriptionOfWorkRequested.mandatory";
         } else if (StringUtils.isBlank(request.getFullNameOfCustomer())) {
             reason = StringUtils.joinWith(";", reason, "Input.FullNameOfCustomer.mandatory");
-        } else if (!request.hasQuotedPrice() || Transformer.transform(request.getQuotedPrice()).isEmpty()) {
+        } else if (!request.hasQuotedPrice()) {
             reason = StringUtils.joinWith(";", reason, "Input.QuotedPrice.mandatory");
         }
         if (reason.length() > 0) {
@@ -30,7 +29,7 @@ public class ContractServiceApiHandler {
         }
 
         String id = contractService.addQuote(request.getFullNameOfCustomer(),
-                Transformer.transform(request.getQuotedPrice()).get(),
+                Transformer.transform(request.getQuotedPrice()),
                 request.getDescriptionOfWorkRequested());
 
         return NewQuoteResponse.newBuilder().setContractId(id).build();
@@ -48,7 +47,7 @@ public class ContractServiceApiHandler {
             if (StringUtils.isBlank(request.getWork().getDescriptionOfWorkDone())) {
                 reasons = StringUtils.joinWith(";", reasons, "Input.Work.Description.mandatory");
             }
-            if (!request.getWork().hasCostOfWork() || Transformer.transform(request.getWork().getCostOfWork()).isEmpty()) {
+            if (!request.getWork().hasCostOfWork()) {
                 reasons = StringUtils.joinWith(";", reasons, "Input.Work.Cost.mandatory");
             }
         }
@@ -65,7 +64,7 @@ public class ContractServiceApiHandler {
     public FinalizeContractResponse finalizeContract(FinalizeContractRequest request) {
         checkContractIdPresent(request.getContractId());
 
-        BigDecimal profitMade = contractService.finalizeContract(request.getContractId());
+        var profitMade = contractService.finalizeContract(request.getContractId());
 
         return FinalizeContractResponse.newBuilder()
                 .setProfitMade(Transformer.transform(profitMade))

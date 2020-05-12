@@ -1,0 +1,27 @@
+<configuration scan="false" scanPeriod="5 seconds" debug="false">
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%-10.10thread] %d{HH:mm:ss,SSS} %41.41logger{40} %-6.6p %msg%n%rEx{30}</pattern>
+        </encoder>
+    </appender>
+
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
+
+    <root level="TRACE">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+    <logger name="nl.jdriven" level="TRACE"/>
+
+    <logger name="io.grpc.netty" level="INFO"/>
+    <logger name="io.grpc.internal" level="INFO"/>
+    <logger name="io.grpc.Context" level="INFO"/>
+    <logger name="io.perfmark.impl" level="INFO"/>
+
+<!--    <logger name="io.grpc.netty.shaded.io.netty" level="INFO"/>-->
+<!--    <logger name="io.grpc.netty.shaded.io.grpc.netty.NettyClientHandler" level="WARN"/>-->
+
+</configuration>

@@ -2,19 +2,18 @@ package nl.jdriven.blogs.svc.contract.model.main;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-
-import java.math.BigDecimal;
+import org.joda.money.Money;
 
 public class WorkDone {
-    private final BigDecimal costOfWork;
+    private final Money costOfWork;
     private final String descriptionOfWorkDone;
 
-    public WorkDone(BigDecimal costOfWork, String descriptionOfWorkDone) {
+    public WorkDone(Money costOfWork, String descriptionOfWorkDone) {
         this.costOfWork = costOfWork;
         this.descriptionOfWorkDone = descriptionOfWorkDone;
     }
 
-    public BigDecimal getCostOfWork() {
+    public Money getCostOfWork() {
         return costOfWork;
     }
 

@@ -1,11 +1,13 @@
 package nl.jdriven.blogs.svc.contract.service;
 
+import lombok.extern.slf4j.Slf4j;
 import nl.jdriven.blogs.svc.contract.model.exception.NotFoundException;
 import nl.jdriven.blogs.svc.contract.model.exception.PreConditionNotMetException;
 import nl.jdriven.blogs.svc.contract.model.main.Contract;
 import nl.jdriven.blogs.svc.contract.model.main.WorkDone;
+import org.joda.money.CurrencyUnit;
+import org.joda.money.Money;
 
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -13,6 +15,7 @@ import java.util.UUID;
 /**
  * this service implements the business logic of the Contract service.
  */
+@Slf4j
 public class ContractService {
     private static final Map<String, Contract> contracts = new HashMap<>();
 
@@ -20,31 +23,32 @@ public class ContractService {
      * Start a new contact as a quote with a quoted fixed price and some info.
      * @return contract id.
      */
-    public String addQuote(String fullNameOfCustomer, BigDecimal quotedPrice, String descriptionOfWorkRequested) {
+    public String addQuote(String fullNameOfCustomer, Money quotedPrice, String descriptionOfWorkRequested) {
         var contract = new Contract(
                 UUID.randomUUID().toString(),
                 quotedPrice,
                 descriptionOfWorkRequested,
                 fullNameOfCustomer);
         contracts.put(contract.getId(), contract);
-        System.out.println("Added contract as a quote: " + contract);
+        log.info("Added contract as a quote: \n{}" , contract);
         return contract.getId();
     }
 
     /**
      * Add some work that was done to the contract; the contract needs to be in status ATWORK.
      * @throws PreConditionNotMetException
-     * @throws  NotFoundException
+     * @throws NotFoundException
      */
     public void addWorkDone(String id, WorkDone workDone) {
-        var c = contracts.get(id);
-        if (c == null) {
+        var contract = contracts.get(id);
+        if (contract == null) {
             throw new NotFoundException();
         }
-        if (c.getStatus() != Contract.Status.ATWORK) {
+        if (contract.getStatus() != Contract.Status.ATWORK) {
             throw new PreConditionNotMetException("Not.at.work");
         }
-        c.addWorkDone(workDone);
+        contract.addWorkDone(workDone);
+        log.info("Added work to contract: \n{}" , contract);
     }
 
     /**
@@ -54,14 +58,15 @@ public class ContractService {
      * @throws  NotFoundException
      */
     public void promoteQuote(String id) {
-        var c = contracts.get(id);
-        if (c == null) {
+        var contract = contracts.get(id);
+        if (contract == null) {
             throw new NotFoundException();
         }
-        if (c.getStatus() != Contract.Status.QUOTE) {
+        if (contract.getStatus() != Contract.Status.QUOTE) {
             throw new PreConditionNotMetException("Not.a.quote");
         }
-        c.setStatus(Contract.Status.ATWORK);
+        contract.setStatus(Contract.Status.ATWORK);
+        log.info("quote promoted to contract: \n{}", contract);
     }
 
     /**
@@ -69,23 +74,25 @@ public class ContractService {
      * @return calculated profit
      * @throws PreConditionNotMetException
      */
-    public BigDecimal finalizeContract(String id) {
-        var c = contracts.get(id);
-        if (c == null) {
+    public Money finalizeContract(String id) {
+        var contract = contracts.get(id);
+        if (contract == null) {
             throw new NotFoundException();
         }
-        if (c.getStatus() != Contract.Status.ATWORK) {
+        if (contract.getStatus() != Contract.Status.ATWORK) {
             throw new PreConditionNotMetException("Not.at.work");
         }
 
-        c.setStatus(Contract.Status.FINALIZED);
+        contract.setStatus(Contract.Status.FINALIZED);
         // total expenditure is all work costs combined
-        var workCosts = c.getWorkDone().stream()
+        var workCosts = contract.getWorkDone().stream()
                 .map(WorkDone::getCostOfWork)
-                .reduce(BigDecimal::add)
-                .orElse(BigDecimal.ZERO); // add() always delivers, so the default is for the compilerchecks
+                .reduce(Money::plus)
+                .orElse(Money.zero(CurrencyUnit.EUR)); // add() always delivers, so the default is only for the compilerchecks
 
-        return c.getQuotedPrice().subtract(workCosts);
+        log.info("finalized contract: \nworkCosts={}\nquotedPrice={}", workCosts.toBigMoney(), contract.getQuotedPrice());
+        log.info("finalized contract: \n{}", contract);
+        return contract.getQuotedPrice().minus(workCosts);
     }
 
     /**
@@ -94,11 +101,11 @@ public class ContractService {
      * @throws NotFoundException
      */
     public Contract find(String id) {
-        var c = contracts.get(id);
-        if (c == null) {
+        var contract = contracts.get(id);
+        if (contract == null) {
             throw new NotFoundException();
         }
-        return c;
+        return contract;
     }
 
 }
