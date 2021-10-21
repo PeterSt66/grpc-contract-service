@@ -1,154 +1,177 @@
 package nl.jdriven.blogs.svc.contract.api;
 
 import io.grpc.stub.StreamObserver;
-import nl.jdriven.blogs.svc.contract.model.api.DetailedResult;
 import nl.jdriven.blogs.svc.contract.model.api.Response;
-import nl.jdriven.blogs.svc.contract.model.main.Contract;
-import nl.jdriven.blogs.svc.contract.proto.*;
+import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneRequest;
+import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneResponse;
+import nl.jdriven.blogs.svc.contract.proto.ContractId;
+import nl.jdriven.blogs.svc.contract.proto.ContractServiceGrpc;
+import nl.jdriven.blogs.svc.contract.proto.Error;
+import nl.jdriven.blogs.svc.contract.proto.FinalizeContractRequest;
+import nl.jdriven.blogs.svc.contract.proto.FinalizeContractResponse;
+import nl.jdriven.blogs.svc.contract.proto.FindContractRequest;
+import nl.jdriven.blogs.svc.contract.proto.FindContractResponse;
+import nl.jdriven.blogs.svc.contract.proto.NewQuoteRequest;
+import nl.jdriven.blogs.svc.contract.proto.NewQuoteResponse;
+import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteRequest;
+import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteResponse;
+import nl.jdriven.blogs.svc.contract.proto.Status;
+import nl.jdriven.blogs.svc.contract.proto.Statuscode;
 import nl.jdriven.blogs.svc.contract.service.ContractService;
 import org.apache.commons.lang3.StringUtils;
 
-import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
-import static nl.jdriven.blogs.svc.contract.model.api.DetailedResult.Result.FAILED;
+import static nl.jdriven.blogs.svc.contract.model.api.Response.Result.*;
 
 public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplBase {
 
-    private static final ContractService handler = new ContractService();
+   private static final ContractService handler = new ContractService();
 
-    @Override
-    public void newQuote(NewQuoteRequest request, StreamObserver<NewQuoteResponse> responseObserver) {
-        returnResponse(responseObserver, newQuote(request));
-    }
+   @Override
+   public void newQuote(NewQuoteRequest request, StreamObserver<NewQuoteResponse> responseObserver) {
+      returnResponse(responseObserver, newQuote(request));
+   }
 
-    private NewQuoteResponse newQuote(NewQuoteRequest request) {
-        String reason = "";
-        if (StringUtils.isBlank(request.getDescriptionOfWorkRequested())) {
-            reason = "Input.DescriptionOfWorkRequested.mandatory";
-        } else if (StringUtils.isBlank(request.getFullNameOfParticipant())) {
-            reason = StringUtils.joinWith(";", reason, "Input.FullNameOfParticipant.mandatory");
-        } else if (!request.hasQuotedPrice() || Transformer.transform(request.getQuotedPrice()).isEmpty()) {
-            reason = StringUtils.joinWith(";", reason, "Input.QuotedPrice.mandatory");
-        }
-        if (reason.length() > 0) {
-            return NewQuoteResponse.newBuilder().setStatus(Result.FAILED).setReason(reason).build();
-        }
+   private NewQuoteResponse newQuote(NewQuoteRequest request) {
+      if (StringUtils.isBlank(request.getDescriptionOfWorkRequested())) {
+         return NewQuoteResponse.newBuilder()
+                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "DescriptionOfWorkRequested", "mandatory"))
+                 .build();
+      }
 
-        String id = handler.addQuote(request.getFullNameOfParticipant(),
-                Transformer.transform(request.getQuotedPrice()).get(),
-                request.getDescriptionOfWorkRequested());
+      var result = handler.addQuote(request.getFullNameOfParticipant(),
+              Transformer.transform(request.getQuotedPrice()),
+              request.getDescriptionOfWorkRequested());
 
-        return NewQuoteResponse.newBuilder()
-                .setQuoteId(ContractId.newBuilder().setId(id).build())
-                .setStatus(Result.OK)
-                .setReason("Quote.added")
-                .build();
-    }
+      var newQuoteResponseBuilder = NewQuoteResponse.newBuilder().setStatus(Transformer.transform(result));
 
-    @Override
-    public void addWorkDone(AddWorkDoneRequest request, StreamObserver<AddWorkDoneResponse> responseObserver) {
-        returnResponse(responseObserver, addWorkDone(request));
-    }
+      if (result.getResult() == Response.Result.OK) {
+         var id = result.getResultObject();
+         newQuoteResponseBuilder.setQuoteId(ContractId.newBuilder().setId(id).build());
+      }
 
-    private AddWorkDoneResponse addWorkDone(AddWorkDoneRequest request) {
-        String reason = "";
-        if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
-            reason = "Input.ContractId.mandatory";
-        }
-        if (!request.hasWork()) {
-            reason = StringUtils.joinWith(";", reason, "Input.Work.mandatory");
-        }
-        else {
-            // check the work package
-            if (StringUtils.isBlank(request.getWork().getDescriptionOfWorkDone())) {
-                reason = StringUtils.joinWith(";", reason, "Input.Work.Description.mandatory");
-            }
-            if (!request.getWork().hasCostOfWork() || Transformer.transform(request.getWork().getCostOfWork()).isEmpty()) {
-                reason = StringUtils.joinWith(";", reason, "Input.Work.Cost.mandatory");
-            }
-        }
-        if (reason.length() > 0) {
-            return AddWorkDoneResponse.newBuilder().setStatus(Result.FAILED).setReason(reason).build();
-        }
-
-        var workDone = Transformer.transform(request.getWork());
-        DetailedResult result = handler.addWorkDone(request.getContractId().getId(), workDone);
-
-        return AddWorkDoneResponse.newBuilder()
-                .setStatus(Transformer.transform(result.getResult()))
-                .setReason(result.getReason())
-                .build();
-    }
-
-    @Override
-    public void finalizeContract(ContractId request, StreamObserver<FinalizeContractResponse> responseObserver) {
-        returnResponse(responseObserver, finalizeContract(request));
-    }
-
-    private FinalizeContractResponse finalizeContract(ContractId request) {
-        var reason = "";
-        if (StringUtils.isBlank(request.getId())) {
-            reason = "Input.ContractId.mandatory";
-        }
-        if (reason.length() > 0) {
-            return FinalizeContractResponse.newBuilder().setStatus(Result.FAILED).setReason(reason).build();
-        }
-        Response<BigDecimal> response = handler.finalizeContract(request.getId());
-
-        return FinalizeContractResponse.newBuilder()
-                .setStatus(Transformer.transform(response.getDetailedResult().getResult()))
-                .setReason(response.getDetailedResult().getReason())
-                .setProfitMade(Transformer.transform(response.get()))
-                .build();
-    }
+      return newQuoteResponseBuilder.build();
+   }
 
 
-    @Override
-    public void find(ContractId request, StreamObserver<ContractResponse> responseObserver) {
-        returnResponse(responseObserver, find(request));
-    }
+   @Override
+   public void addWorkDone(AddWorkDoneRequest request, StreamObserver<AddWorkDoneResponse> responseObserver) {
+      returnResponse(responseObserver, addWorkDone(request));
+   }
 
-    private ContractResponse find(ContractId request) {
-        var reason = "";
-        if (StringUtils.isBlank(request.getId())) {
-            reason = "Input.ContractId.mandatory";
-        }
-        if (reason.length() > 0) {
-            return ContractResponse.newBuilder().setStatus(Result.FAILED).setReason(reason).build();
-        }
+   private AddWorkDoneResponse addWorkDone(AddWorkDoneRequest request) {
+      // validate the part of the input that is 'non-functional'
+      var errors = new ArrayList<Error>();
+      if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
+         errors.add(asError("ContractId", "Mandatory"));
+      }
+      if (!request.hasWork()) {
+         errors.add(asError("Work", "Mandatory"));
+      }
+      if (!errors.isEmpty()) {
+         return AddWorkDoneResponse.newBuilder()
+                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", errors))
+                 .build();
+      }
 
-        Response<Contract> response = handler.find(request.getId());
+      var workDone = Transformer.transform(request.getWork());
+      var result = handler.addWorkDone(request.getContractId().getId(), workDone);
 
-        return ContractResponse.newBuilder()
-                .setContract(Transformer.transform(response.get()))
-                .setStatus(Transformer.transform(response.getDetailedResult().getResult()))
-                .setReason(response.getDetailedResult().getReason())
-                .build();
-    }
+      return AddWorkDoneResponse.newBuilder()
+              .setStatus(Transformer.transform(result))
+              .build();
+   }
 
-    @Override
-    public void promoteQuote(ContractId request, StreamObserver<PromoteQuoteResponse> responseObserver) {
-        var result = promoteQuote(request);
-        returnResponse(responseObserver,
-                PromoteQuoteResponse.newBuilder()
-                        .setStatus(Transformer.transform(result.getResult()))
-                        .setReason(result.getReason())
-                        .build());
-    }
+   @Override
+   public void finalizeContract(FinalizeContractRequest request, StreamObserver<FinalizeContractResponse> responseObserver) {
+      returnResponse(responseObserver, finalizeContract(request));
+   }
 
-    private DetailedResult promoteQuote(ContractId request) {
-        var reason = "";
-        if (StringUtils.isBlank(request.getId())) {
-            reason = "Input.ContractId.mandatory";
-        }
-        if (reason.length() > 0) {
-            return DetailedResult.of(FAILED, reason);
-        }
-        return handler.promoteQuote(request.getId());
-    }
+   private FinalizeContractResponse finalizeContract(FinalizeContractRequest request) {
+      if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
+         return FinalizeContractResponse.newBuilder()
+                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "ContractId", "mandatory"))
+                 .build();
+      }
 
-    private <T> void returnResponse(StreamObserver<T> responseObserver, T response) {
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
-    }
+      var response = handler.finalizeContract(request.getContractId().getId());
+
+      return FinalizeContractResponse.newBuilder()
+              .setStatus(Transformer.transform(response))
+              .setProfitMade(Transformer.transform(response.getResultObject()))
+              .build();
+   }
+
+
+   @Override
+   public void findContract(FindContractRequest request, StreamObserver<FindContractResponse> responseObserver) {
+      returnResponse(responseObserver, find(request));
+   }
+
+   private FindContractResponse find(FindContractRequest request) {
+      if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
+         return FindContractResponse.newBuilder()
+                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "ContractId", "mandatory"))
+                 .build();
+      }
+
+      var response = handler.find(request.getContractId().getId());
+
+      var responseBuilder = FindContractResponse.newBuilder().setStatus(Transformer.transform(response));
+      if (response.getResult() == OK) {
+         responseBuilder.setContract(Transformer.transform(response.getResultObject()));
+      }
+      return responseBuilder.build();
+   }
+
+   @Override
+   public void promoteQuote(PromoteQuoteRequest request, StreamObserver<PromoteQuoteResponse> responseObserver) {
+
+      var result = promoteQuote(request);
+
+      returnResponse(responseObserver,
+              PromoteQuoteResponse.newBuilder()
+                      .setStatus(Transformer.transform(result))
+                      .build());
+   }
+
+   private Response<?> promoteQuote(PromoteQuoteRequest request) {
+      if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
+           return Response.of(FAILED, "Validation failed",asError( "ContractId", "mandatory"));
+      }
+      return handler.promoteQuote(request.getContractId().getId());
+   }
+
+   // ////////////////////////////////
+   //
+   // Local helper methods below
+   //
+   // ////////////////////////////////
+   private <T> void returnResponse(StreamObserver<T> responseObserver, T response) {
+      responseObserver.onNext(response);
+      responseObserver.onCompleted();
+   }
+
+   private Status asStatus(Statuscode statusCode, String reason, List<Error> errors) {
+      return Status.newBuilder()
+              .setStatus(statusCode)
+              .setReason(reason)
+              .addAllErrors(errors)
+              .build();
+   }
+
+   private Status asStatus(Statuscode statusCode, String reason, String location, String errCode) {
+      return Status.newBuilder()
+              .setStatus(statusCode)
+              .setReason(reason)
+              .addErrors(asError(location, errCode))
+              .build();
+   }
+
+   private Error asError(String location, String errCode) {
+      return Error.newBuilder().setLocation(location).setErrorCode(errCode).build();
+   }
+
 }

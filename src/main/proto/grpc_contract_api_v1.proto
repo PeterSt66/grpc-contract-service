@@ -12,10 +12,10 @@ import "google/type/money.proto";
 
 service ContractService {
     rpc newQuote (NewQuoteRequest) returns (NewQuoteResponse);
-    rpc promoteQuote (ContractId) returns (PromoteQuoteResponse);
+    rpc promoteQuote (PromoteQuoteRequest) returns (PromoteQuoteResponse);
     rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
-    rpc finalizeContract (ContractId) returns (FinalizeContractResponse);
-    rpc find (ContractId) returns (ContractResponse);
+    rpc finalizeContract (FinalizeContractRequest) returns (FinalizeContractResponse);
+    rpc findContract(FindContractRequest) returns (FindContractResponse);
 }
 
 message NewQuoteRequest {
@@ -25,14 +25,16 @@ message NewQuoteRequest {
 }
 
 message NewQuoteResponse {
-    Result status = 1;
-    string reason = 2;
+    Status status = 1;
     ContractId quoteId = 3;
 }
 
+message PromoteQuoteRequest {
+    ContractId contractId = 1;
+}
+
 message PromoteQuoteResponse {
-    Result status = 1;
-    string reason = 2;
+    Status status = 1;
 }
 
 message AddWorkDoneRequest {
@@ -41,19 +43,24 @@ message AddWorkDoneRequest {
 }
 
 message AddWorkDoneResponse {
-    Result status = 1;
-    string reason = 2;
+    Status status = 1;
+}
+
+message FinalizeContractRequest {
+    ContractId contractId = 1;
 }
 
 message FinalizeContractResponse {
-    Result status = 1;
-    string reason = 2;
+    Status status = 1;
     google.type.Money profitMade = 3;
 }
 
-message ContractResponse {
-    Result status = 1;
-    string reason = 2;
+message FindContractRequest {
+    ContractId contractId = 1;
+}
+
+message FindContractResponse {
+    Status status = 1;
     Contract contract = 3;
 }
 
@@ -79,7 +86,21 @@ message WorkDone {
     string descriptionOfWorkDone = 2;
 }
 
-enum Result {
+message Status {
+    Statuscode status = 1;
+    string reason = 2;
+    repeated Error errors = 3;
+}
+
+
+message Error {
+    string errorCode = 1;
+    string location = 2;
+    repeated string args = 3;
+}
+
+
+enum Statuscode {
     UNKNOWN = 0;
     OK = 1;
     FAILED = 2;

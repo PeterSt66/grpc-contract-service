@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class Contract {
-    public static enum Status {QUOTE, ATWORK, FINALIZED, ABANDONED}
+    public enum Status {QUOTE, ATWORK, FINALIZED, ABANDONED}
 
     private Status status = Status.QUOTE;
     private final String id;
