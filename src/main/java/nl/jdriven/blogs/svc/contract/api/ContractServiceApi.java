@@ -2,6 +2,7 @@ package nl.jdriven.blogs.svc.contract.api;
 
 import io.grpc.stub.StreamObserver;
 import nl.jdriven.blogs.svc.contract.model.api.Response;
+import nl.jdriven.blogs.svc.contract.model.main.Contract;
 import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneRequest;
 import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneResponse;
 import nl.jdriven.blogs.svc.contract.proto.ContractId;
@@ -9,8 +10,8 @@ import nl.jdriven.blogs.svc.contract.proto.ContractServiceGrpc;
 import nl.jdriven.blogs.svc.contract.proto.Error;
 import nl.jdriven.blogs.svc.contract.proto.FinalizeContractRequest;
 import nl.jdriven.blogs.svc.contract.proto.FinalizeContractResponse;
-import nl.jdriven.blogs.svc.contract.proto.FindContractRequest;
-import nl.jdriven.blogs.svc.contract.proto.FindContractResponse;
+import nl.jdriven.blogs.svc.contract.proto.FindContractsRequest;
+import nl.jdriven.blogs.svc.contract.proto.FindContractsResponse;
 import nl.jdriven.blogs.svc.contract.proto.NewQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.NewQuoteResponse;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteRequest;
@@ -22,8 +23,10 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static nl.jdriven.blogs.svc.contract.model.api.Response.Result.*;
+import static nl.jdriven.blogs.svc.contract.proto.BoolOption.*;
 
 public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplBase {
 
@@ -106,22 +109,46 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
 
 
    @Override
-   public void findContract(FindContractRequest request, StreamObserver<FindContractResponse> responseObserver) {
+   public void findContracts(FindContractsRequest request, StreamObserver<FindContractsResponse> responseObserver) {
       returnResponse(responseObserver, find(request));
    }
 
-   private FindContractResponse find(FindContractRequest request) {
-      if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
-         return FindContractResponse.newBuilder()
-                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "ContractId", "mandatory"))
-                 .build();
+   private FindContractsResponse find(FindContractsRequest request) {
+      var includeQuotes = request.getIncludeQuotes();
+      var includeFinalized = request.getIncludeFinalized();
+      var includeWorking = request.getIncludeWorking();
+
+      Response<List<Contract>> response;
+      var noFiltering = includeQuotes == UNDEF && includeFinalized == UNDEF && includeWorking == UNDEF;
+      if (noFiltering) {
+         if (request.getContractIdCount() == 0) {
+            return FindContractsResponse.newBuilder()
+                    .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "ContractIds", "mandatory"))
+                    .build();
+         }
+         var cids = request.getContractIdList().stream()
+                 .map(ContractId::getId)
+                 .filter(StringUtils::isNotBlank)
+                 .collect(Collectors.toList());
+         response = handler.findOnIds(cids);
+      } else {
+         response = handler.findOnIncludes(Transformer.transform(includeQuotes), Transformer.transform(includeWorking), Transformer.transform(includeFinalized));
       }
 
-      var response = handler.find(request.getContractId().getId());
-
-      var responseBuilder = FindContractResponse.newBuilder().setStatus(Transformer.transform(response));
+      var responseBuilder = FindContractsResponse.newBuilder().setStatus(Transformer.transform(response));
       if (response.getResult() == OK) {
-         responseBuilder.setContract(Transformer.transform(response.getResultObject()));
+         var contractsFound = response.getResultObject();
+         // determine which part we need to include in the response objects
+         var includeQuotePart = true;
+         var includeWorkPart = true;
+         if (request.hasOptions() && StringUtils.isNotBlank(request.getOptions().getIncluded())) {
+            var included = request.getOptions().getIncluded().toUpperCase();
+            includeWorkPart = included.contains("WORKDONE");
+            includeQuotePart = included.contains("QUOTE");
+         }
+         List<nl.jdriven.blogs.svc.contract.proto.Contract> contracts =
+                 Transformer.transform(contractsFound, includeQuotePart, includeWorkPart);
+         responseBuilder.addAllContracts(contracts);
       }
       return responseBuilder.build();
    }
@@ -139,7 +166,7 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
 
    private Response<?> promoteQuote(PromoteQuoteRequest request) {
       if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
-           return Response.of(FAILED, "Validation failed",asError( "ContractId", "mandatory"));
+         return Response.of(FAILED, "Validation failed", asError("ContractId", "mandatory"));
       }
       return handler.promoteQuote(request.getContractId().getId());
    }

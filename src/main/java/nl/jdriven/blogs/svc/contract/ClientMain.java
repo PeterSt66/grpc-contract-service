@@ -5,14 +5,17 @@ import io.grpc.ManagedChannelBuilder;
 import nl.jdriven.blogs.svc.contract.api.Transformer;
 import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneRequest;
 import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneResponse;
+import nl.jdriven.blogs.svc.contract.proto.BoolOption;
+import nl.jdriven.blogs.svc.contract.proto.Contract;
 import nl.jdriven.blogs.svc.contract.proto.ContractId;
 import nl.jdriven.blogs.svc.contract.proto.ContractServiceGrpc;
 import nl.jdriven.blogs.svc.contract.proto.FinalizeContractRequest;
 import nl.jdriven.blogs.svc.contract.proto.FinalizeContractResponse;
-import nl.jdriven.blogs.svc.contract.proto.FindContractRequest;
-import nl.jdriven.blogs.svc.contract.proto.FindContractResponse;
+import nl.jdriven.blogs.svc.contract.proto.FindContractsRequest;
+import nl.jdriven.blogs.svc.contract.proto.FindContractsResponse;
 import nl.jdriven.blogs.svc.contract.proto.NewQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.NewQuoteResponse;
+import nl.jdriven.blogs.svc.contract.proto.Options;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteResponse;
 import nl.jdriven.blogs.svc.contract.proto.Status;
@@ -22,6 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.util.List;
 
 public class ClientMain {
 
@@ -39,7 +43,7 @@ public class ClientMain {
 
       // Add some work to quote - should fail
       var response = AddSomeWork(client, cid, "Bad work", 200L);
-      assertStatus("AddSomeWork-WhileNotAtWork", response.getStatus(), Statuscode.FAILED, "Contract.not.workable", "Contract/Not.at.work");
+      assertStatus("AddSomeWork-WhileNotAtWork", response.getStatus(), Statuscode.FAILED, "Contract.not.workable", "Not.at.work/Contract");
 
 
       // Add empty work to quote - should fail
@@ -67,20 +71,70 @@ public class ClientMain {
       assertStatus("finalizeContract-Ok", fcresp.getStatus(), Statuscode.OK, "Ok");
       System.out.println("Finalize contract: profit=" + fcresp.getProfitMade().getCurrencyCode() + " " + fcresp.getProfitMade().getUnits());
 
-      var fcresp2 = findContract(client, cid);
-      assertStatus("findContract-Ok", fcresp2.getStatus(), Statuscode.OK, "Ok");
-      System.out.println("Find contract gave: " + fcresp2.getContract());
+      var fcresp2 = findContracts(client, cid, "body");
+      assertStatus("findContracts-on-id-Ok", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      dumpContractList(fcresp2.getContractsList(), "on ids");
+      //System.out.println("First contract: " + fcresp2.getContracts(0));
+
+
+      // make some additional contracts for filtering
+      prepareQuote(client);
+
+      aqresp = prepareQuote(client);
+      promoteQuoteToContract(client, aqresp.getQuoteId().getId(), "evolve");
+
+      aqresp = prepareQuote(client);
+      promoteQuoteToContract(client, aqresp.getQuoteId().getId(), "evolve");
+      AddSomeWork(client, aqresp.getQuoteId(), "Foo work", 1000L);
+
+      fcresp2 = findContracts(client, true, true, true, "quote");
+      assertStatus("findContracts-Ok-all", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      dumpContractList(fcresp2.getContractsList(), "All");
+
+      fcresp2 = findContracts(client, true, false, true, "workdone");
+      assertStatus("findContracts-Ok-no-work", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      dumpContractList(fcresp2.getContractsList(), "Only quote and final");
+
+      fcresp2 = findContracts(client, false, false, true, "");
+      assertStatus("findContracts-Ok-no-work-quote", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      dumpContractList(fcresp2.getContractsList(), "Only final");
 
       // avoid nastiness on the serverside due to the sudden death of the connection
       ((ManagedChannel) client.getChannel()).shutdownNow();
    }
 
+   private static void dumpContractList(List<Contract> contracts, String filterDesc) {
+      StringBuilder sb = new StringBuilder("Find contract gave with filter=(" + filterDesc + "): ");
+      contracts.forEach(c ->
+              sb.append("\n")
+              .append("   cid=").append(c.getContractId().getId())
+              .append("    st=").append(c.getStatus())
+              .append("    w#=").append(c.getWorkCount())
+              .append("    qt=").append(c.hasQuote()?"YES":"NO"));
 
-   private static FindContractResponse findContract(ContractServiceGrpc.ContractServiceBlockingStub client, ContractId cid) {
-      var request = FindContractRequest.newBuilder()
-              .setContractId(cid)
-              .build();
-      return client.findContract(request);
+
+      System.out.println(sb);
+   }
+
+
+   private static FindContractsResponse findContracts(ContractServiceGrpc.ContractServiceBlockingStub client, ContractId cid, String includeOption) {
+      var requestBuilder = FindContractsRequest.newBuilder()
+              .addContractId(cid);
+      if (StringUtils.isNotBlank(includeOption)) {
+         requestBuilder.setOptions(Options.newBuilder().setIncluded(includeOption));
+      }
+      return client.findContracts(requestBuilder.build());
+   }
+
+   private static FindContractsResponse findContracts(ContractServiceGrpc.ContractServiceBlockingStub client, boolean withQuotes, boolean withWork, boolean withFinal, String includeOption) {
+      var requestBuilder = FindContractsRequest.newBuilder()
+              .setIncludeQuotes(withQuotes ? BoolOption.YES : BoolOption.NO)
+              .setIncludeWorking(withWork ? BoolOption.YES : BoolOption.UNDEF)
+              .setIncludeFinalized(withFinal ? BoolOption.YES : BoolOption.UNDEF);
+      if (StringUtils.isNotBlank(includeOption)) {
+         requestBuilder.setOptions(Options.newBuilder().setIncluded(includeOption));
+      }
+      return client.findContracts(requestBuilder.build());
    }
 
    private static FinalizeContractResponse finalizeContract(ContractServiceGrpc.ContractServiceBlockingStub client, ContractId cid) {
@@ -94,8 +148,7 @@ public class ClientMain {
       var quoteRequest = PromoteQuoteRequest.newBuilder()
               .setContractId(ContractId.newBuilder().setId(cid).build())
               .build();
-      var pqrespWrong = client.promoteQuote(quoteRequest);
-      return pqrespWrong;
+      return client.promoteQuote(quoteRequest);
    }
 
    private static NewQuoteResponse prepareQuote(ContractServiceGrpc.ContractServiceBlockingStub client) {
@@ -106,8 +159,7 @@ public class ClientMain {
               .setDescriptionOfWorkRequested("Please give me a quote for installing a kitchen, everything will be delivered @ the house, including all appliances.")
               .setQuotedPrice(quotedPrice)
               .build();
-      var aqresp = client.newQuote(request);
-      return aqresp;
+      return client.newQuote(request);
    }
 
    private static AddWorkDoneResponse AddSomeWork(ContractServiceGrpc.ContractServiceBlockingStub client, ContractId cid, String desc, long amountInEur) {
@@ -119,8 +171,7 @@ public class ClientMain {
               .setContractId(cid)
               .setWork(workdone)
               .build();
-      var wdresp = client.addWorkDone(adr);
-      return wdresp;
+      return client.addWorkDone(adr);
 
    }
 
@@ -133,8 +184,7 @@ public class ClientMain {
               .setContractId(ContractId.newBuilder().setId("Bogus").build())
               .setWork(workdone)
               .build();
-      var wdresp = client.addWorkDone(adr);
-      return wdresp;
+      return client.addWorkDone(adr);
    }
 
    private static void assertStatus(String action, Status status, Statuscode expectedStatuscode) {
@@ -142,7 +192,7 @@ public class ClientMain {
    }
 
    private static void assertStatus(String action, Status status, Statuscode expectedStatuscode, String expectedReason, String... expectedErrorCodes) {
-      System.out.println("  -- " + action + " result : " + status.getStatus() + " " + status.getReason() + " "+ status.getErrorsList());
+      System.out.println("  -- " + action + " result : " + status.getStatus() + " " + status.getReason() + " " + status.getErrorsList());
 
       if (status.getStatus() != expectedStatuscode) {
          throw new IllegalStateException("Expected statuscode " + expectedStatuscode + " but found " + status);

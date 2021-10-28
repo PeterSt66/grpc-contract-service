@@ -15,60 +15,66 @@ service ContractService {
     rpc promoteQuote (PromoteQuoteRequest) returns (PromoteQuoteResponse);
     rpc addWorkDone (AddWorkDoneRequest) returns (AddWorkDoneResponse);
     rpc finalizeContract (FinalizeContractRequest) returns (FinalizeContractResponse);
-    rpc findContract(FindContractRequest) returns (FindContractResponse);
+    rpc findContracts(FindContractsRequest) returns (FindContractsResponse);
 }
 
 message NewQuoteRequest {
-    string fullNameOfParticipant = 1;
-    google.type.Money quotedPrice = 2;
-    string descriptionOfWorkRequested = 3;
+    Options options = 1;
+    string fullNameOfParticipant = 11;
+    google.type.Money quotedPrice = 12;
+    string descriptionOfWorkRequested = 13;
 }
 
 message NewQuoteResponse {
     Status status = 1;
-    ContractId quoteId = 3;
+    ContractId quoteId = 11;
 }
 
 message PromoteQuoteRequest {
-    ContractId contractId = 1;
+    ContractId contractId = 11;
 }
 
 message PromoteQuoteResponse {
-    Status status = 1;
+    Status status = 11;
 }
 
 message AddWorkDoneRequest {
-    ContractId contractId = 1;
-    WorkDone work = 2;
+    ContractId contractId = 11;
+    WorkDone work = 12;
 }
 
 message AddWorkDoneResponse {
-    Status status = 1;
+    Status status = 11;
 }
 
 message FinalizeContractRequest {
-    ContractId contractId = 1;
+    ContractId contractId = 11;
 }
 
 message FinalizeContractResponse {
-    Status status = 1;
-    google.type.Money profitMade = 3;
+    Status status = 11;
+    google.type.Money profitMade = 12;
 }
 
-message FindContractRequest {
-    ContractId contractId = 1;
+message FindContractsRequest {
+    Options options = 1;
+    repeated ContractId contractId = 11;
+    BoolOption includeQuotes = 12;
+    BoolOption includeWorking = 13;
+    BoolOption includeFinalized = 14;
 }
 
-message FindContractResponse {
-    Status status = 1;
-    Contract contract = 3;
+message FindContractsResponse {
+    Status status = 11;
+    repeated Contract contracts = 12;
 }
 
 /*** All Model definitions follows below ****/
 message Contract {
-    ContractId contractId = 1;
-    Quote quote = 2;
-    repeated WorkDone work = 3;
+    ContractId contractId = 11;
+    Quote quote = 12;
+    repeated WorkDone work = 13;
+    string status = 14;
 }
 
 message ContractId {
@@ -92,17 +98,31 @@ message Status {
     repeated Error errors = 3;
 }
 
-
 message Error {
     string errorCode = 1;
     string location = 2;
     repeated string args = 3;
 }
 
+message Options {
+    repeated OptionAttr optionAttributes = 4;
+    string included = 2;  // comma-separated list of response parts that should be included, using this means other parts are excluded
+}
+
+message OptionAttr {
+    string name = 1;
+    string value = 2;
+}
 
 enum Statuscode {
     UNKNOWN = 0;
     OK = 1;
     FAILED = 2;
     NOTFOUND = 3;
+}
+
+enum BoolOption {
+    UNDEF = 0;
+    YES = 1;
+    NO = 2;
 }

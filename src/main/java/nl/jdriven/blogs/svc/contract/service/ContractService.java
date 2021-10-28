@@ -1,5 +1,6 @@
 package nl.jdriven.blogs.svc.contract.service;
 
+import nl.jdriven.blogs.svc.contract.model.api.BooleanOption;
 import nl.jdriven.blogs.svc.contract.model.api.Error;
 import nl.jdriven.blogs.svc.contract.model.api.Response;
 import nl.jdriven.blogs.svc.contract.model.main.Contract;
@@ -11,9 +12,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import static nl.jdriven.blogs.svc.contract.model.api.BooleanOption.YES;
 import static nl.jdriven.blogs.svc.contract.model.api.Response.Result.NOTFOUND;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
@@ -104,12 +108,25 @@ public class ContractService {
       return Response.of(profit);
    }
 
-   public Response<Contract> find(String id) {
-      var c = contracts.get(id);
-      if (c == null) {
-         return Response.of(NOTFOUND, "Contract.Not.Found", Error.of("Not.Found", "Contract", id));
-      }
-      return Response.of(c);
+   public Response<List<Contract>> findOnIds(List<String> ids) {
+      var found = ids.stream()
+              .map(contracts::get)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toList());
+      //      if (c == null) {
+      //         return Response.of(NOTFOUND, "Contract.Not.Found", Error.of("Not.Found", "Contract", id));
+      //      }
+      return Response.of(found);
+   }
+
+   public Response<List<Contract>> findOnIncludes(BooleanOption includeQuotes, BooleanOption includeWorking, BooleanOption includeFinalized) {
+      var found = contracts.values().stream()
+              .filter(c -> (includeQuotes == YES && c.getStatus() == Contract.Status.QUOTE)
+                      || (includeWorking == YES && c.getStatus() == Contract.Status.ATWORK)
+                      || (includeFinalized == YES && c.getStatus() == Contract.Status.FINALIZED)
+              )
+              .collect(Collectors.toList());
+      return Response.of(found);
    }
 
 }
