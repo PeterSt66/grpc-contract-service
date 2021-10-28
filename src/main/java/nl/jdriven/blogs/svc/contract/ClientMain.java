@@ -18,7 +18,7 @@ import nl.jdriven.blogs.svc.contract.proto.NewQuoteResponse;
 import nl.jdriven.blogs.svc.contract.proto.Options;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteResponse;
-import nl.jdriven.blogs.svc.contract.proto.Status;
+import nl.jdriven.blogs.svc.contract.proto.ResponseStatus;
 import nl.jdriven.blogs.svc.contract.proto.Statuscode;
 import nl.jdriven.blogs.svc.contract.proto.WorkDone;
 import org.apache.commons.lang3.StringUtils;
@@ -107,10 +107,10 @@ public class ClientMain {
       StringBuilder sb = new StringBuilder("Find contract gave with filter=(" + filterDesc + "): ");
       contracts.forEach(c ->
               sb.append("\n")
-              .append("   cid=").append(c.getContractId().getId())
-              .append("    st=").append(c.getStatus())
-              .append("    w#=").append(c.getWorkCount())
-              .append("    qt=").append(c.hasQuote()?"YES":"NO"));
+                      .append("   cid=").append(c.getContractId().getId())
+                      .append("    st=").append(c.getStatus())
+                      .append("    w#=").append(c.getWorkCount())
+                      .append("    qt=").append(c.hasQuote() ? "YES" : "NO"));
 
 
       System.out.println(sb);
@@ -187,12 +187,18 @@ public class ClientMain {
       return client.addWorkDone(adr);
    }
 
-   private static void assertStatus(String action, Status status, Statuscode expectedStatuscode) {
+   private static void assertStatus(String action, ResponseStatus status, Statuscode expectedStatuscode) {
       assertStatus(action, status, expectedStatuscode, null);
    }
 
-   private static void assertStatus(String action, Status status, Statuscode expectedStatuscode, String expectedReason, String... expectedErrorCodes) {
-      System.out.println("  -- " + action + " result : " + status.getStatus() + " " + status.getReason() + " " + status.getErrorsList());
+   private static void assertStatus(String action, ResponseStatus status, Statuscode expectedStatuscode, String expectedReason, String... expectedErrorCodes) {
+      System.out.print("  -- " + action);
+      System.out.print(" result : st=" + status.getStatus());
+      System.out.print(" rs=" + status.getReason());
+      if (StringUtils.isNotBlank(status.getWarning())) {
+         System.out.print(" warn=" + status.getWarning());
+      }
+      System.out.print(" err=" + status.getErrorsList() + "\n");
 
       if (status.getStatus() != expectedStatuscode) {
          throw new IllegalStateException("Expected statuscode " + expectedStatuscode + " but found " + status);

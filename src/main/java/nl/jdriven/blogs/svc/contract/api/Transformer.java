@@ -91,8 +91,17 @@ public class Transformer {
       return nl.jdriven.blogs.svc.contract.proto.Statuscode.forNumber(result.getNumber());
    }
 
-   public static nl.jdriven.blogs.svc.contract.proto.Status transform(Response<?> result) {
-      return nl.jdriven.blogs.svc.contract.proto.Status.newBuilder()
+   public static nl.jdriven.blogs.svc.contract.proto.ResponseStatus transform(Response<?> result, String withWarning) {
+      return nl.jdriven.blogs.svc.contract.proto.ResponseStatus.newBuilder()
+              .setStatus(transform(result.getResult()))
+              .setReason(result.getReason())
+              .setWarning(withWarning)
+              .addAllErrors(transform(result.getErrors()))
+              .build();
+   }
+
+   public static nl.jdriven.blogs.svc.contract.proto.ResponseStatus transform(Response<?> result) {
+      return nl.jdriven.blogs.svc.contract.proto.ResponseStatus.newBuilder()
               .setStatus(transform(result.getResult()))
               .setReason(result.getReason())
               .addAllErrors(transform(result.getErrors()))

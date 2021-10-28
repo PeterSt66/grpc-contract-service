@@ -26,7 +26,7 @@ message NewQuoteRequest {
 }
 
 message NewQuoteResponse {
-    Status status = 1;
+    ResponseStatus status = 1;
     ContractId quoteId = 11;
 }
 
@@ -35,7 +35,7 @@ message PromoteQuoteRequest {
 }
 
 message PromoteQuoteResponse {
-    Status status = 11;
+    ResponseStatus status = 11;
 }
 
 message AddWorkDoneRequest {
@@ -44,7 +44,7 @@ message AddWorkDoneRequest {
 }
 
 message AddWorkDoneResponse {
-    Status status = 11;
+    ResponseStatus status = 11;
 }
 
 message FinalizeContractRequest {
@@ -52,7 +52,7 @@ message FinalizeContractRequest {
 }
 
 message FinalizeContractResponse {
-    Status status = 11;
+    ResponseStatus status = 11;
     google.type.Money profitMade = 12;
 }
 
@@ -65,7 +65,7 @@ message FindContractsRequest {
 }
 
 message FindContractsResponse {
-    Status status = 11;
+    ResponseStatus status = 11;
     repeated Contract contracts = 12;
 }
 
@@ -92,10 +92,11 @@ message WorkDone {
     string descriptionOfWorkDone = 2;
 }
 
-message Status {
+message ResponseStatus {
     Statuscode status = 1;
     string reason = 2;
-    repeated Error errors = 3;
+    string warning = 3;
+    repeated Error errors = 4;
 }
 
 message Error {

@@ -16,7 +16,7 @@ import nl.jdriven.blogs.svc.contract.proto.NewQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.NewQuoteResponse;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteResponse;
-import nl.jdriven.blogs.svc.contract.proto.Status;
+import nl.jdriven.blogs.svc.contract.proto.ResponseStatus;
 import nl.jdriven.blogs.svc.contract.proto.Statuscode;
 import nl.jdriven.blogs.svc.contract.service.ContractService;
 import org.apache.commons.lang3.StringUtils;
@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static nl.jdriven.blogs.svc.contract.model.api.Response.Result.*;
-import static nl.jdriven.blogs.svc.contract.proto.BoolOption.*;
+import static nl.jdriven.blogs.svc.contract.proto.BoolOption.UNDEF;
 
 public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplBase {
 
@@ -102,7 +102,7 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
       var response = handler.finalizeContract(request.getContractId().getId());
 
       return FinalizeContractResponse.newBuilder()
-              .setStatus(Transformer.transform(response))
+              .setStatus(Transformer.transform(response, "This call has a warning"))
               .setProfitMade(Transformer.transform(response.getResultObject()))
               .build();
    }
@@ -181,16 +181,16 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
       responseObserver.onCompleted();
    }
 
-   private Status asStatus(Statuscode statusCode, String reason, List<Error> errors) {
-      return Status.newBuilder()
+   private ResponseStatus asStatus(Statuscode statusCode, String reason, List<Error> errors) {
+      return ResponseStatus.newBuilder()
               .setStatus(statusCode)
               .setReason(reason)
               .addAllErrors(errors)
               .build();
    }
 
-   private Status asStatus(Statuscode statusCode, String reason, String location, String errCode) {
-      return Status.newBuilder()
+   private ResponseStatus asStatus(Statuscode statusCode, String reason, String location, String errCode) {
+      return ResponseStatus.newBuilder()
               .setStatus(statusCode)
               .setReason(reason)
               .addErrors(asError(location, errCode))
