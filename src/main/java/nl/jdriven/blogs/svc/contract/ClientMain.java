@@ -19,7 +19,6 @@ import nl.jdriven.blogs.svc.contract.proto.Options;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteResponse;
 import nl.jdriven.blogs.svc.contract.proto.ResponseStatus;
-import nl.jdriven.blogs.svc.contract.proto.Statuscode;
 import nl.jdriven.blogs.svc.contract.proto.WorkDone;
 import org.apache.commons.lang3.StringUtils;
 
@@ -38,41 +37,41 @@ public class ClientMain {
 
       // Start with a quote
       var aqresp = prepareQuote(client);
-      assertStatus("prepareQuote", aqresp.getStatus(), Statuscode.OK);
+      assertStatus("prepareQuote", aqresp.getStatus(), ResponseStatus.Code.OK);
       var cid = aqresp.getQuoteId();
 
       // Add some work to quote - should fail
       var response = AddSomeWork(client, cid, "Bad work", 200L);
-      assertStatus("AddSomeWork-WhileNotAtWork", response.getStatus(), Statuscode.FAILED, "Contract.not.workable", "Not.at.work/Contract");
+      assertStatus("AddSomeWork-WhileNotAtWork", response.getStatus(), ResponseStatus.Code.VALIDATION_ERR, "Contract.not.workable", "Not.at.work/Contract");
 
 
       // Add empty work to quote - should fail
       var ewresp = tryEmptyWork(client);
       assertStatus("AddSomeWork-ValidationErrors", ewresp.getStatus(),
-              Statuscode.FAILED, "Validation failed", "mandatory/WorkDone.Description", "Cost.Below.Minimal.Amount/WorkDone.Cost");
+              ResponseStatus.Code.VALIDATION_ERR, "Validation failed", "mandatory/WorkDone.Description", "Cost.Below.Minimal.Amount/WorkDone.Cost");
 
       // promote unfound quote to contract - should fail
       var pqresp = promoteQuoteToContract(client, "Bogus", "unknown quote");
-      assertStatus("promoteQuoteToContract-ContractNotFound", pqresp.getStatus(), Statuscode.NOTFOUND, "Notfound");
+      assertStatus("promoteQuoteToContract-ContractNotFound", pqresp.getStatus(), ResponseStatus.Code.NOTFOUND, "Notfound");
 
       // promote quote to contract
       var pqresp2 = promoteQuoteToContract(client, cid.getId(), "proper quote");
-      assertStatus("promoteQuoteToContract-Ok", pqresp2.getStatus(), Statuscode.OK);
+      assertStatus("promoteQuoteToContract-Ok", pqresp2.getStatus(), ResponseStatus.Code.OK);
 
       // Add some work to contract
       var aswresp2 = AddSomeWork(client, cid, "Constructed new plumbing and installed all cabinets including the kitchen sink", 1200L);
-      assertStatus("AddSomeWork-Ok", aswresp2.getStatus(), Statuscode.OK, "Done");
+      assertStatus("AddSomeWork-Ok", aswresp2.getStatus(), ResponseStatus.Code.OK, "Done");
 
       // Add some more work to contract
       var aswresp3 = AddSomeWork(client, cid, "Installed all appliances", 1000L);
-      assertStatus("AddSomeWork-Ok", aswresp3.getStatus(), Statuscode.OK, "Done");
+      assertStatus("AddSomeWork-Ok", aswresp3.getStatus(), ResponseStatus.Code.OK, "Done");
 
       var fcresp = finalizeContract(client, cid);
-      assertStatus("finalizeContract-Ok", fcresp.getStatus(), Statuscode.OK, "Ok");
+      assertStatus("finalizeContract-Ok", fcresp.getStatus(), ResponseStatus.Code.OK, "Ok");
       System.out.println("Finalize contract: profit=" + fcresp.getProfitMade().getCurrencyCode() + " " + fcresp.getProfitMade().getUnits());
 
       var fcresp2 = findContracts(client, cid, "body");
-      assertStatus("findContracts-on-id-Ok", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      assertStatus("findContracts-on-id-Ok", fcresp2.getStatus(), ResponseStatus.Code.OK, "Ok");
       dumpContractList(fcresp2.getContractsList(), "on ids");
       //System.out.println("First contract: " + fcresp2.getContracts(0));
 
@@ -88,15 +87,15 @@ public class ClientMain {
       AddSomeWork(client, aqresp.getQuoteId(), "Foo work", 1000L);
 
       fcresp2 = findContracts(client, true, true, true, "quote");
-      assertStatus("findContracts-Ok-all", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      assertStatus("findContracts-Ok-all", fcresp2.getStatus(), ResponseStatus.Code.OK, "Ok");
       dumpContractList(fcresp2.getContractsList(), "All");
 
       fcresp2 = findContracts(client, true, false, true, "workdone");
-      assertStatus("findContracts-Ok-no-work", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      assertStatus("findContracts-Ok-no-work", fcresp2.getStatus(), ResponseStatus.Code.OK, "Ok");
       dumpContractList(fcresp2.getContractsList(), "Only quote and final");
 
       fcresp2 = findContracts(client, false, false, true, "");
-      assertStatus("findContracts-Ok-no-work-quote", fcresp2.getStatus(), Statuscode.OK, "Ok");
+      assertStatus("findContracts-Ok-no-work-quote", fcresp2.getStatus(), ResponseStatus.Code.OK, "Ok");
       dumpContractList(fcresp2.getContractsList(), "Only final");
 
       // avoid nastiness on the serverside due to the sudden death of the connection
@@ -187,11 +186,11 @@ public class ClientMain {
       return client.addWorkDone(adr);
    }
 
-   private static void assertStatus(String action, ResponseStatus status, Statuscode expectedStatuscode) {
-      assertStatus(action, status, expectedStatuscode, null);
+   private static void assertStatus(String action, ResponseStatus status, ResponseStatus.Code expectedCode) {
+      assertStatus(action, status, expectedCode, null);
    }
 
-   private static void assertStatus(String action, ResponseStatus status, Statuscode expectedStatuscode, String expectedReason, String... expectedErrorCodes) {
+   private static void assertStatus(String action, ResponseStatus status, ResponseStatus.Code expectedCode, String expectedReason, String... expectedErrorCodes) {
       System.out.print("  -- " + action);
       System.out.print(" result : st=" + status.getStatus());
       System.out.print(" rs=" + status.getReason());
@@ -200,8 +199,8 @@ public class ClientMain {
       }
       System.out.print(" err=" + status.getErrorsList() + "\n");
 
-      if (status.getStatus() != expectedStatuscode) {
-         throw new IllegalStateException("Expected statuscode " + expectedStatuscode + " but found " + status);
+      if (status.getStatus() != expectedCode) {
+         throw new IllegalStateException("Expected ResponseStatus.Code " + expectedCode + " but found " + status);
       }
       if (expectedReason != null && !expectedReason.equalsIgnoreCase(status.getReason())) {
          throw new IllegalStateException("Expected reason " + expectedReason + " but found " + status);

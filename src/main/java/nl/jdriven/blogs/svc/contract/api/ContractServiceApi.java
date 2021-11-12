@@ -7,7 +7,6 @@ import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneRequest;
 import nl.jdriven.blogs.svc.contract.proto.AddWorkDoneResponse;
 import nl.jdriven.blogs.svc.contract.proto.ContractId;
 import nl.jdriven.blogs.svc.contract.proto.ContractServiceGrpc;
-import nl.jdriven.blogs.svc.contract.proto.Error;
 import nl.jdriven.blogs.svc.contract.proto.FinalizeContractRequest;
 import nl.jdriven.blogs.svc.contract.proto.FinalizeContractResponse;
 import nl.jdriven.blogs.svc.contract.proto.FindContractsRequest;
@@ -17,7 +16,6 @@ import nl.jdriven.blogs.svc.contract.proto.NewQuoteResponse;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteRequest;
 import nl.jdriven.blogs.svc.contract.proto.PromoteQuoteResponse;
 import nl.jdriven.blogs.svc.contract.proto.ResponseStatus;
-import nl.jdriven.blogs.svc.contract.proto.Statuscode;
 import nl.jdriven.blogs.svc.contract.service.ContractService;
 import org.apache.commons.lang3.StringUtils;
 
@@ -40,7 +38,7 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
    private NewQuoteResponse newQuote(NewQuoteRequest request) {
       if (StringUtils.isBlank(request.getDescriptionOfWorkRequested())) {
          return NewQuoteResponse.newBuilder()
-                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "DescriptionOfWorkRequested", "mandatory"))
+                 .setStatus(Transformer.asStatus(ResponseStatus.Code.FAILED, "Validation failed", "DescriptionOfWorkRequested", "mandatory"))
                  .build();
       }
 
@@ -66,16 +64,16 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
 
    private AddWorkDoneResponse addWorkDone(AddWorkDoneRequest request) {
       // validate the part of the input that is 'non-functional'
-      var errors = new ArrayList<Error>();
+      var errors = new ArrayList<ResponseStatus.Error>();
       if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
-         errors.add(asError("ContractId", "Mandatory"));
+         errors.add(Transformer.asError("ContractId", "Mandatory"));
       }
       if (!request.hasWork()) {
-         errors.add(asError("Work", "Mandatory"));
+         errors.add(Transformer.asError("Work", "Mandatory"));
       }
       if (!errors.isEmpty()) {
          return AddWorkDoneResponse.newBuilder()
-                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", errors))
+                 .setStatus(Transformer.asStatus(ResponseStatus.Code.FAILED, "Validation failed", errors))
                  .build();
       }
 
@@ -95,7 +93,7 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
    private FinalizeContractResponse finalizeContract(FinalizeContractRequest request) {
       if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
          return FinalizeContractResponse.newBuilder()
-                 .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "ContractId", "mandatory"))
+                 .setStatus(Transformer.asStatus(ResponseStatus.Code.FAILED, "Validation failed", "ContractId", "mandatory"))
                  .build();
       }
 
@@ -123,7 +121,7 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
       if (noFiltering) {
          if (request.getContractIdCount() == 0) {
             return FindContractsResponse.newBuilder()
-                    .setStatus(asStatus(Statuscode.FAILED, "Validation failed", "ContractIds", "mandatory"))
+                    .setStatus(Transformer.asStatus(ResponseStatus.Code.FAILED, "Validation failed", "ContractIds", "mandatory"))
                     .build();
          }
          var cids = request.getContractIdList().stream()
@@ -166,7 +164,7 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
 
    private Response<?> promoteQuote(PromoteQuoteRequest request) {
       if (!request.hasContractId() || StringUtils.isBlank(request.getContractId().getId())) {
-         return Response.of(FAILED, "Validation failed", asError("ContractId", "mandatory"));
+         return Response.of(FAILED, "Validation failed", Transformer.asError("ContractId", "mandatory"));
       }
       return handler.promoteQuote(request.getContractId().getId());
    }
@@ -181,24 +179,6 @@ public class ContractServiceApi extends ContractServiceGrpc.ContractServiceImplB
       responseObserver.onCompleted();
    }
 
-   private ResponseStatus asStatus(Statuscode statusCode, String reason, List<Error> errors) {
-      return ResponseStatus.newBuilder()
-              .setStatus(statusCode)
-              .setReason(reason)
-              .addAllErrors(errors)
-              .build();
-   }
 
-   private ResponseStatus asStatus(Statuscode statusCode, String reason, String location, String errCode) {
-      return ResponseStatus.newBuilder()
-              .setStatus(statusCode)
-              .setReason(reason)
-              .addErrors(asError(location, errCode))
-              .build();
-   }
-
-   private Error asError(String location, String errCode) {
-      return Error.newBuilder().setLocation(location).setErrorCode(errCode).build();
-   }
 
 }

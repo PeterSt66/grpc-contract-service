@@ -6,6 +6,7 @@ import nl.jdriven.blogs.svc.contract.model.api.Error;
 import nl.jdriven.blogs.svc.contract.model.api.Response;
 import nl.jdriven.blogs.svc.contract.model.main.Contract;
 import nl.jdriven.blogs.svc.contract.model.main.WorkDone;
+import nl.jdriven.blogs.svc.contract.proto.ResponseStatus;
 import org.apache.commons.lang3.StringUtils;
 
 import java.math.BigDecimal;
@@ -87,12 +88,12 @@ public class Transformer {
               .collect(Collectors.toList());
    }
 
-   public static nl.jdriven.blogs.svc.contract.proto.Statuscode transform(Response.Result result) {
-      return nl.jdriven.blogs.svc.contract.proto.Statuscode.forNumber(result.getNumber());
+   public static ResponseStatus.Code transform(Response.Result result) {
+      return ResponseStatus.Code.forNumber(result.getNumber());
    }
 
-   public static nl.jdriven.blogs.svc.contract.proto.ResponseStatus transform(Response<?> result, String withWarning) {
-      return nl.jdriven.blogs.svc.contract.proto.ResponseStatus.newBuilder()
+   public static ResponseStatus transform(Response<?> result, String withWarning) {
+      return ResponseStatus.newBuilder()
               .setStatus(transform(result.getResult()))
               .setReason(result.getReason())
               .setWarning(withWarning)
@@ -100,26 +101,26 @@ public class Transformer {
               .build();
    }
 
-   public static nl.jdriven.blogs.svc.contract.proto.ResponseStatus transform(Response<?> result) {
-      return nl.jdriven.blogs.svc.contract.proto.ResponseStatus.newBuilder()
+   public static ResponseStatus transform(Response<?> result) {
+      return ResponseStatus.newBuilder()
               .setStatus(transform(result.getResult()))
               .setReason(result.getReason())
               .addAllErrors(transform(result.getErrors()))
               .build();
    }
 
-   private static Iterable<nl.jdriven.blogs.svc.contract.proto.Error> transform(Collection<Error> errors) {
+   private static Iterable<ResponseStatus.Error> transform(Collection<Error> errors) {
       return errors.stream()
               .filter(e -> !Objects.isNull(e))
               .map(Transformer::transform)
               .collect(Collectors.toList());
    }
 
-   private static nl.jdriven.blogs.svc.contract.proto.Error transform(Error error) {
-      return nl.jdriven.blogs.svc.contract.proto.Error.newBuilder()
+   private static ResponseStatus.Error transform(Error error) {
+      return ResponseStatus.Error.newBuilder()
               .setErrorCode(error.getCode())
               .setLocation(error.getLocation())
-              .addAllArgs(error.getArgs())
+              .putAllArgs(error.getArgs())
               .build();
    }
 
@@ -135,6 +136,26 @@ public class Transformer {
          default:
             return BooleanOption.UNSET;
       }
+   }
+
+   public static  ResponseStatus asStatus(ResponseStatus.Code statusCode, String reason, List<ResponseStatus.Error> errors) {
+      return ResponseStatus.newBuilder()
+              .setStatus(statusCode)
+              .setReason(reason)
+              .addAllErrors(errors)
+              .build();
+   }
+
+   public static  ResponseStatus asStatus(ResponseStatus.Code statusCode, String reason, String location, String errCode) {
+      return ResponseStatus.newBuilder()
+              .setStatus(statusCode)
+              .setReason(reason)
+              .addErrors(asError(location, errCode))
+              .build();
+   }
+
+   public static  ResponseStatus.Error asError(String location, String errCode) {
+      return ResponseStatus.Error.newBuilder().setLocation(location).setErrorCode(errCode).build();
    }
 
 }

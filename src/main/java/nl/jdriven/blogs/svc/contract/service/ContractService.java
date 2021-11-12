@@ -37,7 +37,7 @@ public class ContractService {
          errors.add(Error.of("QuotedPrice", "mandatory"));
       }
       if (!errors.isEmpty()) {
-         return Response.of(Response.Result.FAILED, "Input incorrect", errors);
+         return Response.of(Response.Result.VALIDATION_ERR, "Input incorrect", errors);
       }
       @SuppressWarnings("OptionalGetWithoutIsPresent")
       var contract = new Contract(
@@ -60,10 +60,10 @@ public class ContractService {
          errors.add(Error.of("mandatory", "WorkDone.Cost"));
       }
       if (workDone.getCostOfWork().compareTo(BigDecimal.valueOf(100L)) < 0) {
-         errors.add(Error.of("Cost.Below.Minimal.Amount", "WorkDone.Cost", workDone.getCostOfWork().toString()));
+         errors.add(Error.of("Cost.Below.Minimal.Amount", "WorkDone.Cost", "Cost:"+workDone.getCostOfWork().toString()));
       }
       if (!errors.isEmpty()) {
-         return Response.of(Response.Result.FAILED, "Validation failed", errors);
+         return Response.of(Response.Result.VALIDATION_ERR, "Validation failed", errors);
       }
 
       var c = contracts.get(id);
@@ -71,7 +71,7 @@ public class ContractService {
          return Response.NOTFOUND;
       }
       if (c.getStatus() != Contract.Status.ATWORK) {
-         return Response.of(Response.Result.FAILED, "Contract.not.workable", Error.of("Not.at.work","Contract", id));
+         return Response.of(Response.Result.VALIDATION_ERR, "Contract.not.workable", Error.of("Not.at.work","Contract", "ContractId:"+id, "Status:"+c.getStatus()));
       }
       c.addWorkDone(workDone);
       return Response.OK;
@@ -83,7 +83,7 @@ public class ContractService {
          return Response.NOTFOUND;
       }
       if (c.getStatus() != Contract.Status.QUOTE) {
-         return Response.of(Response.Result.FAILED, "Promotion.not.possible", Error.of("Not.a.quote", "Contract.Status", id));
+         return Response.of(Response.Result.VALIDATION_ERR, "Promotion.not.possible", Error.of("Not.a.quote", "Contract.Status", "ContractId:"+id));
       }
       c.setStatus(Contract.Status.ATWORK);
       return Response.OK;
@@ -94,7 +94,7 @@ public class ContractService {
       if (c == null) {
          return Response.of(NOTFOUND, "Contract.Not.Found", Error.of("Not.Found", "Contract", id));
       } else if (c.getStatus() != Contract.Status.ATWORK) {
-         return Response.of(Response.Result.FAILED, "Finalize.not.possible", Error.of("Not.at.work", "Contract", id));
+         return Response.of(Response.Result.VALIDATION_ERR, "Finalize.not.possible", Error.of("Not.at.work", "Contract", "ContractId:"+id));
       }
 
       c.setStatus(Contract.Status.FINALIZED);

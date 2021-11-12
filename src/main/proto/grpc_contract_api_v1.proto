@@ -93,34 +93,39 @@ message WorkDone {
 }
 
 message ResponseStatus {
-    Statuscode status = 1;
+    Code status = 1;
     string reason = 2;
     string warning = 3;
     repeated Error errors = 4;
+
+    enum Code {
+        UNKNOWN = 0;
+        OK = 1;
+        PARTIAL_OK = 2;
+        VALIDATION_ERR = 3;
+        FAILED = 4;
+        NOTFOUND = 5;
+        NOT_AUTHORIZED = 6;
+    }
+
+    message Error {
+        string errorCode = 1;
+        string location = 2;
+        map<string,string> args = 3; // up to handler to give meaning to this
+    }
 }
 
-message Error {
-    string errorCode = 1;
-    string location = 2;
-    repeated string args = 3;
-}
 
 message Options {
     repeated OptionAttr optionAttributes = 4;
     string included = 2;  // comma-separated list of response parts that should be included, using this means other parts are excluded
+
+    message OptionAttr {
+        string name = 1;
+        string value = 2;
+    }
 }
 
-message OptionAttr {
-    string name = 1;
-    string value = 2;
-}
-
-enum Statuscode {
-    UNKNOWN = 0;
-    OK = 1;
-    FAILED = 2;
-    NOTFOUND = 3;
-}
 
 enum BoolOption {
     UNDEF = 0;

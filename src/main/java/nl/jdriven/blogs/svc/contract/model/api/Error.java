@@ -1,21 +1,26 @@
 package nl.jdriven.blogs.svc.contract.model.api;
 
 import java.util.Arrays;
-import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Error {
    private final String location;
    private final String code;
-   private final List<String> args;
+   private final Map<String,String> args;
 
-   public Error( String code, String location, List<String> args) {
+   public Error( String code, String location,Map<String,String> args) {
       this.location = location;
       this.code = code;
       this.args = args;
    }
 
    public static Error of(String code, String location, String... args) {
-      return new Error(code, location, Arrays.asList(args));
+      // very lazy way of getting args across, don't use on production code
+      Map<String, String> argsMap = Arrays.stream(args)
+              .map(a -> a.split(":"))
+              .collect(Collectors.toMap(a -> a[0], a -> a[1]));
+      return new Error(code, location, argsMap);
    }
 
    public String getLocation() {
@@ -26,7 +31,7 @@ public class Error {
       return code;
    }
 
-   public List<String> getArgs() {
+   public Map<String,String> getArgs() {
       return args;
    }
 
